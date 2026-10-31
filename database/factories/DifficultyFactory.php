@@ -1,0 +1,26 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Difficulty;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<Difficulty>
+ */
+class DifficultyFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'code' => fake()->unique()->lexify('diff-?????'),
+            'is_active' => true,
+            'sort_order' => 0,
+        ];
+    }
+}
