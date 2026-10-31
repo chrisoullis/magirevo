@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Recipes\Pages\Concerns;
 
-use App\Actions\SyncLegacyRecipeFields;
 use App\Actions\SyncRecipeContent;
 use App\Models\Recipe;
 use Illuminate\Support\Arr;
@@ -31,6 +30,5 @@ trait SavesRecipeContent
     private function persistRecipeContent(Recipe $recipe): void
     {
         app(SyncRecipeContent::class)->handle($recipe, $this->recipeContent['steps'], $this->recipeContent['ingredients']);
-        app(SyncLegacyRecipeFields::class)->handle($recipe);
     }
 }

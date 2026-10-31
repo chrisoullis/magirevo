@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources\Recipes\RelationManagers;
 
+use App\Actions\AttachRemoteRecipeMedia;
 use App\Actions\RemoveRecipeMedia;
 use App\Actions\StoreRecipeMedia;
-use App\Actions\SyncLegacyRecipeFields;
 use App\Models\Media;
 use App\Models\Recipe;
 use Filament\Actions\Action;
@@ -20,7 +20,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class MediaRelationManager extends RelationManager
@@ -46,7 +45,7 @@ class MediaRelationManager extends RelationManager
             ->modifyQueryUsing(fn ($query) => $query->with('translations'))
             ->columns([
                 ImageColumn::make('preview')
-                    ->state(fn (Media $record): string => Storage::disk($record->disk)->url($record->file_path))
+                    ->state(fn (Media $record): string => $record->publicUrl())
                     ->height(64),
                 TextColumn::make('role')
                     ->state(fn (Media $record): string => $record->pivot->role)
@@ -94,8 +93,32 @@ class MediaRelationManager extends RelationManager
                                 'el' => ['alt_text' => $data['alt_text_el'], 'caption' => $data['caption_el'] ?? null],
                             ], $data['role']);
                         });
-
-                        app(SyncLegacyRecipeFields::class)->handle($recipe);
+                    }),
+                Action::make('addRemote')
+                    ->label('Add remote image')
+                    ->schema([
+                        TextInput::make('url')->label('Image URL (https)')->url()->required()->maxLength(2048),
+                        TextInput::make('credit')->label('Credit / licence')->helperText('Only use images you have the right to publish, for example Unsplash.')->maxLength(255),
+                        TextInput::make('credit_url')->label('Credit link')->url()->maxLength(2048),
+                        Select::make('role')
+                            ->options(['cover' => 'Cover', 'gallery' => 'Gallery'])
+                            ->default('gallery')
+                            ->required(),
+                        TextInput::make('alt_text_en')->label('English alt text')->required()->maxLength(255),
+                        TextInput::make('alt_text_el')->label('Greek alt text')->required()->maxLength(255),
+                    ])
+                    ->action(function (array $data, AttachRemoteRecipeMedia $attachRemoteRecipeMedia): void {
+                        $attachRemoteRecipeMedia->handle(
+                            $this->getOwnerRecord(),
+                            $data['url'],
+                            [
+                                'en' => ['alt_text' => $data['alt_text_en']],
+                                'el' => ['alt_text' => $data['alt_text_el']],
+                            ],
+                            $data['role'],
+                            $data['credit'] ?? null,
+                            $data['credit_url'] ?? null,
+                        );
                     }),
             ])
             ->recordActions([
@@ -116,7 +139,6 @@ class MediaRelationManager extends RelationManager
                             $recipe->media()->updateExistingPivot($record->id, ['role' => 'cover']);
                         });
 
-                        app(SyncLegacyRecipeFields::class)->handle($recipe);
                         Notification::make()->success()->title('Cover image updated')->send();
                     }),
                 Action::make('editText')
@@ -148,7 +170,6 @@ class MediaRelationManager extends RelationManager
                         $recipe = $this->getOwnerRecord();
 
                         $removeRecipeMedia->handle($recipe, $record);
-                        app(SyncLegacyRecipeFields::class)->handle($recipe);
                     }),
             ]);
     }

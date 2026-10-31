@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -20,6 +21,8 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    protected $attributes = ['role' => 'member'];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -30,17 +33,27 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'is_admin' => 'boolean',
+            'role' => UserRole::class,
         ];
     }
 
-    public function savedRecipes(): BelongsToMany
+    public function isAdministrator(): bool
     {
-        return $this->belongsToMany(Recipe::class)->withTimestamps();
+        return $this->role === UserRole::Admin && $this->hasVerifiedEmail();
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->role->canAccessAdminPanel() && $this->hasVerifiedEmail();
+    }
+
+    public function favoriteRecipes(): BelongsToMany
+    {
+        return $this->belongsToMany(Recipe::class, 'recipe_favorites')->withTimestamps();
     }
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->is_admin && $this->hasVerifiedEmail();
+        return $this->isStaff();
     }
 }

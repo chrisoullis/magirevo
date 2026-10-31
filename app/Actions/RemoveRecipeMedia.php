@@ -17,10 +17,13 @@ class RemoveRecipeMedia
             if ($media->recipes()->doesntExist() && $media->recipeSteps()->doesntExist()) {
                 $disk = $media->disk;
                 $path = $media->file_path;
+                $isRemote = $media->isRemote();
 
                 $media->delete();
 
-                DB::afterCommit(fn (): bool => Storage::disk($disk)->delete($path));
+                if (! $isRemote) {
+                    DB::afterCommit(fn (): bool => Storage::disk($disk)->delete($path));
+                }
             }
         });
     }

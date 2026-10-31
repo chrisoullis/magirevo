@@ -7,6 +7,7 @@ use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Storage;
 
 class Media extends Model
 {
@@ -20,6 +21,9 @@ class Media extends Model
     protected $fillable = [
         'disk',
         'file_path',
+        'url',
+        'credit',
+        'credit_url',
         'mime_type',
         'file_size',
         'width',
@@ -38,6 +42,23 @@ class Media extends Model
             'width' => 'integer',
             'height' => 'integer',
         ];
+    }
+
+    public const REMOTE_DISK = 'remote';
+
+    public function isRemote(): bool
+    {
+        return $this->disk === self::REMOTE_DISK;
+    }
+
+    /**
+     * Public URL for either an uploaded file or a remote image.
+     */
+    public function publicUrl(): string
+    {
+        return $this->isRemote()
+            ? (string) $this->url
+            : Storage::disk($this->disk)->url((string) $this->file_path);
     }
 
     public function recipes(): BelongsToMany

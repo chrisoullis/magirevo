@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\Category;
+use App\Models\Media;
 use App\Models\Recipe;
 use App\Models\Tag;
 use App\Models\User;
@@ -14,7 +16,7 @@ class RecipeSeeder extends Seeder
     public function run(): void
     {
         $author = User::query()
-            ->where('is_admin', true)
+            ->where('role', UserRole::Admin->value)
             ->orderBy('id')
             ->first()
             ?? User::query()->firstOrCreate(
@@ -44,11 +46,9 @@ class RecipeSeeder extends Seeder
                 'tags' => ['vegetarian'],
                 'prep_minutes' => 10,
                 'cook_minutes' => 25,
-                'servings' => 2,
+                'base_servings' => 2,
                 'difficulty' => 'Easy',
-                'image_url' => 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1400&q=85',
-                'ingredients' => ['2 tins chickpeas, drained and dried', '2 tbsp olive oil', '1 tsp smoked paprika', '200 g thick Greek yogurt', '1 lemon, zested and juiced', 'A handful each of dill and parsley'],
-                'instructions' => ['Heat the oven to 220°C / 425°F. Toss the chickpeas with oil, paprika and salt.', 'Roast for 25 minutes, shaking the tray once, until crisp and deeply golden.', 'Stir the yogurt with lemon zest, a squeeze of juice and chopped herbs. Spoon onto plates and tumble over the warm chickpeas.'],
+                'cover' => 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1400&q=85',
                 'is_featured' => true,
             ],
             [
@@ -72,11 +72,9 @@ class RecipeSeeder extends Seeder
                 'tags' => ['quick'],
                 'prep_minutes' => 8,
                 'cook_minutes' => 12,
-                'servings' => 2,
+                'base_servings' => 2,
                 'difficulty' => 'Easy',
-                'image_url' => 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1200&q=85',
-                'ingredients' => ['200 g ramen noodles', '60 g unsalted butter', '1 tbsp white miso', '1 lime', '2 spring onions, sliced', 'Toasted sesame seeds'],
-                'instructions' => ['Cook the noodles in salted water until just tender. Reserve a mug of cooking water.', 'Brown the butter in a pan until it smells nutty. Whisk in miso and a splash of noodle water.', 'Toss the noodles through the sauce. Finish with lime, spring onions and sesame.'],
+                'cover' => 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1200&q=85',
                 'is_featured' => false,
             ],
             [
@@ -100,11 +98,9 @@ class RecipeSeeder extends Seeder
                 'tags' => ['vegetarian', 'budget-friendly'],
                 'prep_minutes' => 10,
                 'cook_minutes' => 35,
-                'servings' => 4,
+                'base_servings' => 4,
                 'difficulty' => 'Easy',
-                'image_url' => 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=1200&q=85',
-                'ingredients' => ['500 g ripe cherry tomatoes', '2 tins butter beans, drained', '3 tbsp olive oil', '4 thick slices sourdough', '2 tbsp basil pesto', '1 garlic clove'],
-                'instructions' => ['Heat the oven to 200°C / 400°F. Put tomatoes and beans in a roasting dish with oil and salt.', 'Roast for 35 minutes until the tomatoes collapse and the beans are glossy.', 'Toast the sourdough and rub with garlic. Spoon over the tomato beans and finish with pesto.'],
+                'cover' => 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=1200&q=85',
                 'is_featured' => false,
             ],
             [
@@ -128,11 +124,9 @@ class RecipeSeeder extends Seeder
                 'tags' => ['baking', 'vegetarian'],
                 'prep_minutes' => 15,
                 'cook_minutes' => 45,
-                'servings' => 8,
+                'base_servings' => 8,
                 'difficulty' => 'Easy',
-                'image_url' => 'https://images.unsplash.com/photo-1519869325930-281384150729?auto=format&fit=crop&w=1200&q=85',
-                'ingredients' => ['200 g caster sugar', '3 eggs', '150 ml fruity olive oil', '200 g plain flour', '2 oranges, zested and juiced', '1 tsp baking powder'],
-                'instructions' => ['Heat the oven to 175°C / 350°F and line a loaf tin with baking paper.', 'Whisk sugar and eggs until pale. Slowly whisk in the olive oil, orange zest and juice.', 'Fold in flour and baking powder. Bake for 45 minutes, until a skewer comes out clean.'],
+                'cover' => 'https://images.unsplash.com/photo-1519869325930-281384150729?auto=format&fit=crop&w=1200&q=85',
                 'is_featured' => false,
             ],
             [
@@ -156,11 +150,9 @@ class RecipeSeeder extends Seeder
                 'tags' => ['vegetarian', 'gluten-free'],
                 'prep_minutes' => 15,
                 'cook_minutes' => 20,
-                'servings' => 4,
+                'base_servings' => 4,
                 'difficulty' => 'Easy',
-                'image_url' => 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=1200&q=85',
-                'ingredients' => ['750 g baby potatoes', '100 g Greek yogurt', '1 small bunch parsley', '1 small bunch chives', '2 tbsp capers', '1 tbsp Dijon mustard'],
-                'instructions' => ['Boil the potatoes in well-salted water until tender, about 20 minutes.', 'Blend yogurt, herbs, mustard, capers and a splash of water into a vivid green dressing.', 'Drain the potatoes, halve while warm and fold through the dressing. Season generously.'],
+                'cover' => 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=1200&q=85',
                 'is_featured' => false,
             ],
             [
@@ -184,18 +176,18 @@ class RecipeSeeder extends Seeder
                 'tags' => ['baking', 'vegetarian'],
                 'prep_minutes' => 25,
                 'cook_minutes' => 30,
-                'servings' => 8,
+                'base_servings' => 8,
                 'difficulty' => 'A little project',
-                'image_url' => 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1200&q=85',
-                'ingredients' => ['500 g strong white flour', '7 g instant yeast', '250 ml warm milk', '75 g soft butter', '2 ripe pears, diced', '1 tsp ground cardamom'],
-                'instructions' => ['Mix flour, yeast, milk, butter and a pinch of salt into a soft dough. Knead for 8 minutes.', 'Leave covered for 1 hour, until doubled. Roll out, scatter over pear and cardamom, then roll up.', 'Cut into 8 buns and bake at 190°C / 375°F for 30 minutes until golden.'],
+                'cover' => 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1200&q=85',
                 'is_featured' => false,
             ],
         ];
 
         foreach ($recipes as $recipeData) {
             $tagCodes = $recipeData['tags'];
-            unset($recipeData['tags']);
+            $coverUrl = $recipeData['cover'];
+            $categoryCode = Str::slug($recipeData['category']);
+            unset($recipeData['tags'], $recipeData['cover'], $recipeData['category']);
 
             $recipe = Recipe::query()
                 ->whereTranslation('slug', $recipeData['en']['slug'], 'en')
@@ -209,14 +201,25 @@ class RecipeSeeder extends Seeder
                 ...$recipeData,
                 'status' => 'published',
                 'rest_minutes' => 0,
-                'base_servings' => $recipeData['servings'],
                 'published_at' => now(),
             ]);
             $recipe->save();
 
-            $category = Category::query()
-                ->where('code', Str::slug($recipeData['category']))
-                ->firstOrFail();
+            $category = Category::query()->where('code', $categoryCode)->firstOrFail();
+
+            if ($recipe->media()->doesntExist()) {
+                $media = Media::query()->create([
+                    'disk' => Media::REMOTE_DISK,
+                    'url' => $coverUrl,
+                    'credit' => 'Photo via Unsplash (Unsplash License)',
+                    'credit_url' => 'https://unsplash.com/license',
+                ]);
+                $media->fill([
+                    'en' => ['alt_text' => $recipeData['en']['title']],
+                    'el' => ['alt_text' => $recipeData['el']['title']],
+                ])->save();
+                $recipe->media()->attach($media, ['role' => 'cover', 'sort_order' => 0]);
+            }
 
             $recipe->categories()->syncWithoutDetaching([$category->getKey()]);
 

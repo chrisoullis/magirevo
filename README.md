@@ -81,10 +81,18 @@ For live frontend development, run `npm run dev` in a second terminal and keep i
 The seeder (step 5) is the easiest route. To promote a user who already exists:
 
 ```sh
-php artisan tinker --execute 'App\Models\User::where("email", "you@example.com")->first()->forceFill(["is_admin" => true, "email_verified_at" => now()])->save();'
+php artisan tinker --execute 'App\Models\User::where("email", "you@example.com")->first()->forceFill(["role" => "admin", "email_verified_at" => now()])->save();'
 ```
 
-Access to `/admin` requires both `is_admin=true` and a verified email. `/admin` is registered by the Filament panel provider (`app/Providers/Filament/AdminPanelProvider.php`), so it does not appear in `routes/web.php`; use `php artisan route:list --path=admin` to see it.
+Access to `/admin` requires a verified email and the role `admin` or `editor`. Roles live in `users.role` (`admin`, `editor`, `member`; default `member`):
+
+| Role | Admin panel | Recipes | Lookup tables (categories, tags, difficulties, ingredients, units, scaling modes) |
+| --- | --- | --- | --- |
+| `admin` | yes | create, edit, delete, **publish**, archive | full control |
+| `editor` | yes | create, edit, submit for review | read-only |
+| `member` | no | none (can save recipes) | none |
+
+Authorization is enforced by Laravel policies (`app/Policies`) for every Filament resource. `/admin` is registered by the Filament panel provider (`app/Providers/Filament/AdminPanelProvider.php`), so it does not appear in `routes/web.php`; use `php artisan route:list --path=admin` to see it.
 
 ### PHP extensions on a custom PHP build
 
@@ -114,7 +122,7 @@ Notes:
 
 ### Seeders
 
-`php artisan db:seed` is idempotent and runs, in order: `UnitSeeder`, `CategorySeeder`, `TagSeeder`, `DifficultySeeder`, `ScalingModeSeeder`, `IngredientSeeder`, `RecipeSeeder`, `RecipeContentSeeder`, plus the optional administrator from `.env`. Run an individual one with `php artisan db:seed --class=DifficultySeeder`.
+`php artisan db:seed` is idempotent (note: it resets the password of the `.env` administrator; run the individual seeders instead if you only want sample data) and runs, in order: `UnitSeeder`, `CategorySeeder`, `TagSeeder`, `DifficultySeeder`, `ScalingModeSeeder`, `IngredientSeeder`, `RecipeSeeder`, `RecipeContentSeeder`, plus the optional administrator from `.env`. Run an individual one with `php artisan db:seed --class=DifficultySeeder`.
 
 ## Using the Site
 
@@ -123,7 +131,7 @@ Notes:
 - `/register` creates a member account and sends a signed email-verification link.
 - `/login` signs in an existing member. Unverified accounts are sent to the verification prompt before using member-only features.
 - `/en/saved-recipes` and `/el/saved-recipes`, plus recipe saving, are available only to signed-in, verified members.
-- `/admin` is the Filament recipe editor. Only verified users with `is_admin=true` can access the panel.
+- `/admin` is the Filament recipe editor. Only verified users with the `admin` or `editor` role can access the panel.
 - `/sitemap.xml` lists both home pages and both locale URLs for each published recipe.
 
 Recipe photos are served from Unsplash URLs. Editors manage English and Greek titles, slugs, summaries, introductions, and SEO metadata in Filament. A recipe can be published only when both locales have a title and slug, and it appears publicly after it has a publication date. Other recipe data, including category, ingredients, and instructions, remains shared between locales.
@@ -139,6 +147,92 @@ php artisan test
 ```
 
 Tests use the PostgreSQL database `the_sunday_table_test`, using the connection credentials from `.env`, and cover bilingual recipe discovery, locale-specific URLs, publication requirements, translation cleanup, registration, email verification, and verified-only recipe saving, and the Filament admin resources (including the lookup CRUDs and their delete protection). Filament page tests are skipped when the `intl` extension is missing. Create this test database with the same owner as the application database before running `php artisan test`.
+
+## Database Structure
+
+PostgreSQL. Translatable entities use a main table plus a `*_translations` table with one row per `locale` (`en` or `el`, enforced by a CHECK constraint). Lookup tables (`difficulties`, `scaling_modes`) are referenced by their `code`, not their `id`.
+
+```mermaid
+erDiagram
+    users ||--o{ recipes : "author_id"
+    users }o--o{ recipes : "recipe_favorites"
+    recipes ||--o{ recipe_translations : has
+    recipes }o--o{ categories : recipe_category
+    recipes }o--o{ tags : recipe_tag
+    recipes }o--o| difficulties : "difficulty = code"
+    recipes ||--o{ ingredient_groups : has
+    recipes ||--o{ recipe_ingredients : has
+    ingredient_groups ||--o{ recipe_ingredients : groups
+    ingredient_groups ||--o{ ingredient_group_translations : has
+    recipe_ingredients }o--|| ingredients : ingredient_id
+    recipe_ingredients }o--o| units : unit_id
+    recipe_ingredients }o--|| scaling_modes : "scaling_mode = code"
+    recipe_ingredients ||--o{ recipe_ingredient_translations : has
+    ingredients }o--o| units : default_unit_id
+    ingredients ||--o{ ingredient_translations : has
+    units ||--o{ unit_translations : has
+    categories ||--o{ category_translations : has
+    tags ||--o{ tag_translations : has
+    difficulties ||--o{ difficulty_translations : has
+    scaling_modes ||--o{ scaling_mode_translations : has
+    recipes ||--o{ recipe_steps : has
+    recipe_steps ||--o{ recipe_step_translations : has
+    recipes }o--o{ media : "recipe_media (role, sort_order)"
+    recipe_steps }o--o{ media : recipe_step_media
+    media ||--o{ media_translations : has
+```
+
+### Core tables
+
+| Table | Key columns |
+| --- | --- |
+| `users` | `name`, `email`, `email_verified_at`, `password`, `role` (`admin`/`editor`/`member`) |
+| `recipes` | `author_id` → users, `status`, `is_featured`, `published_at`, `deleted_at` (soft delete), `prep_minutes`, `cook_minutes`, `rest_minutes`, `base_servings`, `difficulty` → `difficulties.code` |
+| `recipe_translations` | `recipe_id`, `locale`, `title`, `slug`, `summary`, `introduction` (rich-text HTML), `seo_title`, `seo_description` |
+| `recipe_ingredients` | `recipe_id`, `ingredient_id`, `ingredient_group_id`, `quantity`, `quantity_max`, `unit_id`, `scaling_mode` → `scaling_modes.code`, `is_optional`, `sort_order` |
+| `recipe_ingredient_translations` | `recipe_ingredient_id`, `locale`, `preparation_note`, `quantity_text` |
+| `ingredient_groups` / `_translations` | Named sections of a recipe's ingredient list (`recipe_id`, `sort_order`; translated `name`) |
+| `recipe_steps` | `recipe_id`, `step_number`, `duration_minutes` |
+| `recipe_step_translations` | `recipe_step_id`, `locale`, `instruction` |
+| `media` | `disk` (`public` or `remote`), `file_path` (uploads) or `url` (remote), `credit`, `credit_url`, `mime_type`, `file_size`, `width`, `height` |
+| `media_translations` | `media_id`, `locale`, `alt_text`, `caption` |
+
+The old `recipes.category`, `image_url`, `ingredients`, `instructions` and `servings` columns no longer exist: categories, media, ingredient lines, steps and `base_servings` are the only source of truth.
+
+**Media.** Uploaded files (`disk=public`) and remote images (`disk=remote`, `url`, `credit`) share one model; `Media::publicUrl()` resolves either. A recipe has at most one `cover` (partial unique index on `recipe_media`). When no cover exists, or a remote image fails to load, the site shows `public/images/recipe-placeholder.svg`. Seeded recipes use Unsplash photos under the Unsplash licence; only add remote images you have the right to publish.
+
+**Publishing.** Drafts may be incomplete. `RecipePublishingService::assertPublishable()` requires English and Greek title, slug and summary, at least one ingredient (with English and Greek names), steps in both languages, a category and a cover image. Only administrators can publish.
+
+**Search.** `pg_trgm` and `unaccent` back GIN indexes on `f_unaccent(lower(...))` for recipe titles/summaries and ingredient, category and tag names, so Greek search ignores accents and case (e.g. `ΜΟΥΣΑΚΑΣ` finds `Μουσακάς`).
+
+### Lookup tables (Recipe data menus)
+
+| Table | Columns | Translated columns |
+| --- | --- | --- |
+| `categories` | `code`, `is_active`, `sort_order` | `name`, `slug`, `description` |
+| `tags` | `code`, `is_active`, `sort_order` | `name`, `slug`, `description` |
+| `difficulties` | `code` (≤20), `is_active`, `sort_order` | `name`, `description` |
+| `scaling_modes` | `code` (≤20), `is_active`, `sort_order` | `name`, `description` |
+| `ingredients` | `code`, `default_unit_id` → units, `is_active` | `name`, `plural_name`, `description` |
+| `units` | `code`, `unit_type` (`mass`/`volume`/`count`), `base_conversion` (> 0), `allow_fraction`, `is_scalable`, `sort_order` | `name`, `abbreviation` |
+
+### Pivot tables
+
+| Table | Links |
+| --- | --- |
+| `recipe_category` | recipes ↔ categories (cascade on delete) |
+| `recipe_tag` | recipes ↔ tags (cascade on delete) |
+| `recipe_favorites` | users' saved recipes (composite primary key) |
+| `recipe_media` | recipes ↔ media, with `role` and `sort_order` |
+| `recipe_step_media` | recipe steps ↔ media, with `sort_order` |
+
+### Framework tables
+
+`cache`, `cache_locks`, `sessions`, `jobs`, `job_batches`, `failed_jobs`, `password_reset_tokens` and `migrations`.
+
+### Delete rules
+
+`recipe_ingredients.ingredient_id`/`unit_id`, `ingredients.default_unit_id`, `recipes.difficulty` and `recipe_ingredients.scaling_mode` use `RESTRICT`, so lookup records that are in use cannot be removed. The admin shows a message instead of failing.
 
 ## Production Notes
 

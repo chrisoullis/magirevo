@@ -137,8 +137,7 @@ class LookupAdminTest extends TestCase
 
     private function administrator(): User
     {
-        $admin = User::factory()->create();
-        $admin->forceFill(['is_admin' => true])->save();
+        $admin = User::factory()->admin()->create();
 
         return $admin;
     }

@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Ingredient;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
+use App\Models\ScalingMode;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -26,7 +27,7 @@ class RecipeIngredientFactory extends Factory
             'quantity' => '1.0000',
             'quantity_max' => null,
             'unit_id' => null,
-            'scaling_mode' => 'linear',
+            'scaling_mode' => fn (): string => ScalingMode::query()->firstOrCreate(['code' => 'linear'], ['sort_order' => 10])->code,
             'is_optional' => false,
             'sort_order' => 0,
         ];

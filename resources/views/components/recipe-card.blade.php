@@ -5,7 +5,7 @@
 @endphp
 <article {{ $attributes->class(['recipe-card']) }}>
     <a class="recipe-card-image" href="{{ $url }}" tabindex="-1" aria-hidden="true">
-        <img src="{{ $recipe->coverUrl() }}" alt="" loading="lazy" width="720" height="540">
+        <img src="{{ $recipe->coverUrl() }}" alt="" loading="lazy" width="720" height="540" onerror="this.onerror=null;this.src='{{ asset('images/recipe-placeholder.svg') }}'">
         @if ($category !== '')<span class="image-category">{{ $category }}</span>@endif
     </a>
     <div class="recipe-card-copy">

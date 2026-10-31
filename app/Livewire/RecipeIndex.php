@@ -7,6 +7,7 @@ use App\Models\Recipe;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -136,18 +137,29 @@ class RecipeIndex extends Component
     {
         $like = '%'.addcslashes(mb_strtolower($term), '%_\\').'%';
         $locale = $this->locale;
+        $fold = $this->hasAccentFolding() ? fn (string $column): string => "f_unaccent(lower({$column}))" : fn (string $column): string => "lower({$column})";
+        $pattern = $this->hasAccentFolding() ? 'f_unaccent(?)' : '?';
 
-        return $query->where(function (Builder $query) use ($like, $locale): void {
+        return $query->where(function (Builder $query) use ($like, $locale, $fold, $pattern): void {
             $query->whereHas('translations', fn (Builder $translation) => $translation
                 ->where('locale', $locale)
                 ->where(fn (Builder $match) => $match
-                    ->whereRaw('LOWER(title) LIKE ?', [$like])
-                    ->orWhereRaw('LOWER(summary) LIKE ?', [$like])))
+                    ->whereRaw($fold('title')." LIKE {$pattern}", [$like])
+                    ->orWhereRaw($fold('summary')." LIKE {$pattern}", [$like])))
                 ->orWhereHas('tags.translations', fn (Builder $translation) => $translation
-                    ->where('locale', $locale)->whereRaw('LOWER(name) LIKE ?', [$like]))
+                    ->where('locale', $locale)->whereRaw($fold('name')." LIKE {$pattern}", [$like]))
                 ->orWhereHas('recipeIngredients.ingredient.translations', fn (Builder $translation) => $translation
-                    ->where('locale', $locale)->whereRaw('LOWER(name) LIKE ?', [$like]));
+                    ->where('locale', $locale)->whereRaw($fold('name')." LIKE {$pattern}", [$like]));
         });
+    }
+
+    private function hasAccentFolding(): bool
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            return false;
+        }
+
+        return (bool) DB::scalar("select to_regproc('f_unaccent') is not null");
     }
 
     private function applySort(Builder $query): Builder

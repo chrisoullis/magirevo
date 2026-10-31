@@ -8,10 +8,10 @@ class SavedRecipesController extends Controller
 {
     public function __invoke(): View
     {
-        $recipes = auth()->user()->savedRecipes()
+        $recipes = auth()->user()->favoriteRecipes()
             ->published()
-            ->withTranslation(app()->getLocale())
-            ->orderByDesc('recipe_user.created_at')
+            ->with(['translations', 'categories.translations', 'media.translations'])
+            ->orderByDesc('recipe_favorites.created_at')
             ->get();
 
         return view('recipes.saved', compact('recipes'));

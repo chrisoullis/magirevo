@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasImmutableCode;
 use Astrotomic\Translatable\Translatable;
 use Database\Factories\DifficultyFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,6 +18,7 @@ class Difficulty extends Model
     /** @use HasFactory<DifficultyFactory> */
     use HasFactory;
 
+    use HasImmutableCode;
     use Translatable;
 
     protected $fillable = [

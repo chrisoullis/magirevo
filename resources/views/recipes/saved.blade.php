@@ -20,10 +20,7 @@
         @else
             <div class="recipe-grid saved-grid">
                 @foreach ($recipes as $recipe)
-                    <article class="recipe-card">
-                        <a class="recipe-card-image" href="{{ route('recipes.show', ['locale' => app()->getLocale(), 'slug' => $recipe->slug], false) }}"><img src="{{ $recipe->image_url }}" alt="{{ $recipe->title }}" loading="lazy" width="720" height="540"><span class="image-category">{{ $recipe->category }}</span></a>
-                        <div class="recipe-card-copy"><div class="recipe-meta"><span>{{ $recipe->prep_minutes + $recipe->cook_minutes }} min</span><span class="meta-separator"></span><span>{{ $recipe->difficulty }}</span></div><h2><a href="{{ route('recipes.show', ['locale' => app()->getLocale(), 'slug' => $recipe->slug], false) }}">{{ $recipe->title }}</a></h2><p>{{ $recipe->summary }}</p><a class="text-link" href="{{ route('recipes.show', ['locale' => app()->getLocale(), 'slug' => $recipe->slug], false) }}">Get the recipe <span aria-hidden="true">&#8594;</span></a></div>
-                    </article>
+                    <x-recipe-card :recipe="$recipe" :locale="app()->getLocale()" heading="h2" />
                 @endforeach
             </div>
         @endif

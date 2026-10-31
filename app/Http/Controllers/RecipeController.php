@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Recipe;
 use App\Services\RecipeContentPresenter;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class RecipeController extends Controller
@@ -55,7 +54,7 @@ class RecipeController extends Controller
     {
         $images = $recipe->media
             ->toBase()
-            ->map(fn ($media): string => Storage::disk($media->disk)->url($media->file_path))
+            ->map(fn ($media): string => $media->publicUrl())
             ->whenEmpty(fn ($collection) => $collection->push($recipe->coverUrl()))
             ->unique()
             ->values()

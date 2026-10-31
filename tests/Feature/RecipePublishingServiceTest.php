@@ -17,16 +17,7 @@ class RecipePublishingServiceTest extends TestCase
     public function test_valid_bilingual_draft_is_published_with_a_timestamp(): void
     {
         $this->freezeTime();
-        $recipe = Recipe::factory()->create();
-        $recipe->translateOrNew('en')->fill([
-            'title' => 'Lemon soup',
-            'slug' => 'lemon-soup',
-        ]);
-        $recipe->translateOrNew('el')->fill([
-            'title' => 'Σούπα λεμονιού',
-            'slug' => 'soupa-lemoniou',
-        ]);
-        $recipe->save();
+        $recipe = Recipe::factory()->complete()->create();
 
         $publishedRecipe = app(RecipePublishingService::class)->publish($recipe);
         $freshRecipe = $publishedRecipe->fresh();

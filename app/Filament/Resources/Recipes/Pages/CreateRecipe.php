@@ -23,11 +23,6 @@ class CreateRecipe extends CreateRecord
             ...$data,
             'author_id' => auth()->id(),
             'status' => 'draft',
-            'servings' => max(1, (int) round((float) $data['base_servings'])),
-            'category' => '',
-            'image_url' => '',
-            'ingredients' => [],
-            'instructions' => [],
         ]));
     }
 

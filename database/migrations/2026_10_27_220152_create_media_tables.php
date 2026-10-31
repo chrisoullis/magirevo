@@ -9,32 +9,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('recipe_steps', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('recipe_id')->constrained()->cascadeOnDelete();
-            $table->unsignedSmallInteger('step_number');
-            $table->unsignedSmallInteger('duration_minutes')->nullable();
-            $table->timestamps();
-            $table->unique(['recipe_id', 'step_number']);
-        });
-
-        Schema::create('recipe_step_translations', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('recipe_step_id')->constrained()->cascadeOnDelete();
-            $table->string('locale', 5);
-            $table->text('instruction');
-            $table->timestamps();
-            $table->unique(['recipe_step_id', 'locale']);
-        });
-
+        // A media row is either an uploaded file (disk + file_path) or a remote image (disk = 'remote' + url).
         Schema::create('media', function (Blueprint $table): void {
             $table->id();
             $table->string('disk', 50)->default('public');
-            $table->string('file_path', 512);
-            $table->string('mime_type', 100);
-            $table->unsignedBigInteger('file_size');
-            $table->unsignedInteger('width');
-            $table->unsignedInteger('height');
+            $table->string('file_path', 512)->nullable();
+            $table->string('url', 2048)->nullable();
+            $table->string('mime_type', 100)->nullable();
+            $table->unsignedBigInteger('file_size')->nullable();
+            $table->unsignedInteger('width')->nullable();
+            $table->unsignedInteger('height')->nullable();
+            $table->string('credit', 255)->nullable();
+            $table->string('credit_url', 2048)->nullable();
             $table->timestamps();
             $table->unique(['disk', 'file_path']);
         });
@@ -70,18 +56,15 @@ return new class extends Migration
             $table->index('media_id');
         });
 
-        DB::statement("ALTER TABLE recipe_step_translations ADD CONSTRAINT recipe_step_translations_locale_check CHECK (locale IN ('en', 'el'))");
         DB::statement("ALTER TABLE media_translations ADD CONSTRAINT media_translations_locale_check CHECK (locale IN ('en', 'el'))");
+        DB::statement("ALTER TABLE media ADD CONSTRAINT media_source_check CHECK ((disk = 'remote' AND url IS NOT NULL AND file_path IS NULL) OR (disk <> 'remote' AND file_path IS NOT NULL AND url IS NULL))");
+        DB::statement("ALTER TABLE media ADD CONSTRAINT media_image_mime_type_check CHECK (mime_type IS NULL OR mime_type IN ('image/jpeg', 'image/png', 'image/webp'))");
+        DB::statement('ALTER TABLE media ADD CONSTRAINT media_file_size_check CHECK (file_size IS NULL OR (file_size > 0 AND file_size <= 10485760))');
+        DB::statement('ALTER TABLE media ADD CONSTRAINT media_dimensions_valid_check CHECK ((width IS NULL OR (width > 0 AND width <= 6000)) AND (height IS NULL OR (height > 0 AND height <= 6000)))');
         DB::statement("ALTER TABLE recipe_media ADD CONSTRAINT recipe_media_role_check CHECK (role IN ('cover', 'gallery'))");
-        DB::statement('ALTER TABLE recipe_steps ADD CONSTRAINT recipe_steps_step_number_positive_check CHECK (step_number > 0)');
-        DB::statement('ALTER TABLE recipe_steps ADD CONSTRAINT recipe_steps_duration_positive_check CHECK (duration_minutes IS NULL OR duration_minutes > 0)');
         DB::statement('ALTER TABLE recipe_media ADD CONSTRAINT recipe_media_sort_order_nonnegative_check CHECK (sort_order >= 0)');
         DB::statement('ALTER TABLE recipe_step_media ADD CONSTRAINT recipe_step_media_sort_order_nonnegative_check CHECK (sort_order >= 0)');
         DB::statement("CREATE UNIQUE INDEX recipe_media_one_cover_unique ON recipe_media (recipe_id) WHERE role = 'cover'");
-        DB::statement("ALTER TABLE media ADD CONSTRAINT media_image_mime_type_check CHECK (mime_type IN ('image/jpeg', 'image/png', 'image/webp'))");
-        DB::statement('ALTER TABLE media ADD CONSTRAINT media_file_size_positive_check CHECK (file_size > 0)');
-        DB::statement('ALTER TABLE media ADD CONSTRAINT media_file_size_limit_check CHECK (file_size <= 10485760)');
-        DB::statement('ALTER TABLE media ADD CONSTRAINT media_dimensions_valid_check CHECK (width > 0 AND height > 0 AND width <= 6000 AND height <= 6000)');
     }
 
     public function down(): void
@@ -90,7 +73,5 @@ return new class extends Migration
         Schema::dropIfExists('recipe_media');
         Schema::dropIfExists('media_translations');
         Schema::dropIfExists('media');
-        Schema::dropIfExists('recipe_step_translations');
-        Schema::dropIfExists('recipe_steps');
     }
 };

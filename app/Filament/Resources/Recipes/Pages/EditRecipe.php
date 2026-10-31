@@ -26,9 +26,9 @@ class EditRecipe extends EditRecord
         return [
             $this->workflowAction('submitForReview', 'Submit for review', 'warning', ['draft'], fn (RecipePublishingService $service, Recipe $recipe) => $service->submitForReview($recipe)),
             $this->workflowAction('publish', 'Publish', 'success', ['draft', 'pending'], fn (RecipePublishingService $service, Recipe $recipe) => $service->publishWithCompletenessChecks($recipe), 'Saved changes only: save the form first.'),
-            $this->workflowAction('unpublish', 'Unpublish', 'gray', ['published'], fn (RecipePublishingService $service, Recipe $recipe) => $service->unpublish($recipe)),
+            $this->workflowAction('unpublish', 'Unpublish', 'gray', ['published'], fn (RecipePublishingService $service, Recipe $recipe) => $service->unpublish($recipe), null, 'publish'),
             $this->workflowAction('archive', 'Archive', 'gray', ['draft', 'published'], fn (RecipePublishingService $service, Recipe $recipe) => $service->archive($recipe)),
-            $this->workflowAction('restoreToDraft', 'Restore to draft', 'gray', ['archived'], fn (RecipePublishingService $service, Recipe $recipe) => $service->restoreToDraft($recipe)),
+            $this->workflowAction('restoreToDraft', 'Restore to draft', 'gray', ['archived'], fn (RecipePublishingService $service, Recipe $recipe) => $service->restoreToDraft($recipe), null, 'archive'),
             DeleteAction::make(),
             RestoreAction::make(),
         ];
@@ -36,13 +36,14 @@ class EditRecipe extends EditRecord
 
     /**
      * @param  list<string>  $fromStatuses
+     * @param  ?string  $ability  Policy ability to check; defaults to the action name.
      */
-    private function workflowAction(string $name, string $label, string $color, array $fromStatuses, callable $transition, ?string $description = null): Action
+    private function workflowAction(string $name, string $label, string $color, array $fromStatuses, callable $transition, ?string $description = null, ?string $ability = null): Action
     {
         return Action::make($name)
             ->label($label)
             ->color($color)
-            ->authorize('publish')
+            ->authorize($ability ?? $name)
             ->visible(fn (Recipe $record): bool => ! $record->trashed() && in_array($record->status, $fromStatuses, true))
             ->requiresConfirmation()
             ->modalDescription($description)
@@ -107,10 +108,7 @@ class EditRecipe extends EditRecord
         $data = $this->extractRecipeContent($data);
 
         return DB::transaction(function () use ($record, $data): Model {
-            $record->update([
-                ...$data,
-                'servings' => max(1, (int) round((float) $data['base_servings'])),
-            ]);
+            $record->update($data);
 
             return $record;
         });

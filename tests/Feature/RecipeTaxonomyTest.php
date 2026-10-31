@@ -8,6 +8,7 @@ use App\Models\Recipe;
 use App\Models\Tag;
 use App\Models\TagTranslation;
 use Database\Seeders\CategorySeeder;
+use Database\Seeders\DifficultySeeder;
 use Database\Seeders\RecipeSeeder;
 use Database\Seeders\TagSeeder;
 use Illuminate\Database\QueryException;
@@ -96,17 +97,18 @@ class RecipeTaxonomyTest extends TestCase
         $this->assertSame(10, DB::table('tag_translations')->count());
     }
 
-    public function test_recipe_seeder_links_seeded_categories_and_preserves_legacy_category_text(): void
+    public function test_recipe_seeder_links_seeded_categories_and_attaches_a_remote_cover(): void
     {
         $this->seed(CategorySeeder::class);
         $this->seed(TagSeeder::class);
+        $this->seed(DifficultySeeder::class);
         $this->seed(RecipeSeeder::class);
 
         $recipe = Recipe::query()
             ->whereTranslation('slug', 'crispy-chickpeas-herby-yogurt', 'en')
             ->firstOrFail();
 
-        $this->assertSame('Weeknight', $recipe->category);
+        $this->assertSame('remote', $recipe->coverMedia()->disk);
         $this->assertTrue($recipe->categories()->where('code', 'weeknight')->exists());
         $this->assertTrue($recipe->tags()->where('code', 'vegetarian')->exists());
     }

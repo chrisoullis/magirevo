@@ -18,7 +18,12 @@ class RecipeAndAccountTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected $seed = true;
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed();
+    }
 
     public function test_visitors_can_browse_recipes_and_filter_the_catalog(): void
     {
@@ -305,7 +310,7 @@ class RecipeAndAccountTest extends TestCase
             ->post(route('recipes.save', ['locale' => 'en', 'recipe' => $recipe]))
             ->assertRedirect();
 
-        $this->assertDatabaseHas('recipe_user', [
+        $this->assertDatabaseHas('recipe_favorites', [
             'user_id' => $user->id,
             'recipe_id' => $recipe->id,
         ]);
@@ -322,7 +327,7 @@ class RecipeAndAccountTest extends TestCase
             ->post(route('recipes.save', ['locale' => 'en', 'recipe' => $recipe]))
             ->assertRedirect(route('verification.notice'));
 
-        $this->assertDatabaseMissing('recipe_user', [
+        $this->assertDatabaseMissing('recipe_favorites', [
             'user_id' => $user->id,
             'recipe_id' => $recipe->id,
         ]);
@@ -338,16 +343,11 @@ class RecipeAndAccountTest extends TestCase
             'author_id' => User::factory()->create()->getKey(),
             ...$translations,
             'status' => $status,
-            'category' => 'Weeknight',
             'prep_minutes' => 10,
             'cook_minutes' => 15,
             'rest_minutes' => 0,
             'base_servings' => 2,
-            'servings' => 2,
             'difficulty' => 'Easy',
-            'image_url' => 'https://example.com/recipe.jpg',
-            'ingredients' => ['Ingredient'],
-            'instructions' => ['Cook it'],
             'published_at' => $status === 'published' ? now() : null,
         ];
     }
@@ -358,8 +358,7 @@ class RecipeAndAccountTest extends TestCase
             $this->markTestSkipped('Filament page rendering requires the PHP intl extension.');
         }
 
-        $admin = User::factory()->create();
-        $admin->forceFill(['is_admin' => true])->save();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
             ->get('/admin/recipes')
@@ -369,8 +368,7 @@ class RecipeAndAccountTest extends TestCase
 
     public function test_unverified_administrators_cannot_open_filament(): void
     {
-        $admin = User::factory()->unverified()->create();
-        $admin->forceFill(['is_admin' => true])->save();
+        $admin = User::factory()->admin()->unverified()->create();
 
         $this->actingAs($admin)->get('/admin/recipes')->assertForbidden();
     }

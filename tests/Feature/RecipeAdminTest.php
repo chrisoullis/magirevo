@@ -103,7 +103,6 @@ class RecipeAdminTest extends TestCase
         $this->assertSame($category->id, $recipe->categories()->firstOrFail()->id);
         $this->assertSame('Ψήστε το.', $recipe->steps()->firstOrFail()->translate('el')->instruction);
         $this->assertSame('ψιλοκομμένο', $recipe->recipeIngredients()->firstOrFail()->translate('el')->preparation_note);
-        $this->assertSame(['Roast it.'], $recipe->instructions);
     }
 
     public function test_recipe_form_validates_required_translations_unique_slugs_and_quantities(): void
@@ -170,7 +169,9 @@ class RecipeAdminTest extends TestCase
 
         $recipe->categories()->attach(Category::factory()->create());
         $recipe->media()->attach(Media::factory()->create(), ['role' => 'cover', 'sort_order' => 0]);
-        $recipe->recipeIngredients()->create(['ingredient_id' => Ingredient::factory()->create()->id]);
+        $ingredient = Ingredient::factory()->create();
+        $ingredient->fill(['en' => ['name' => 'Chicken'], 'el' => ['name' => 'Κοτόπουλο']])->save();
+        $recipe->recipeIngredients()->create(['ingredient_id' => $ingredient->id]);
 
         $component->callAction('publish');
         $recipe->refresh();
@@ -224,8 +225,7 @@ class RecipeAdminTest extends TestCase
 
     private function administrator(): User
     {
-        $admin = User::factory()->create();
-        $admin->forceFill(['is_admin' => true])->save();
+        $admin = User::factory()->admin()->create();
 
         return $admin;
     }
@@ -234,8 +234,8 @@ class RecipeAdminTest extends TestCase
     {
         $recipe = Recipe::factory()->create();
         $recipe->fill([
-            'en' => ['title' => 'Roast chicken', 'slug' => 'roast-chicken'],
-            'el' => ['title' => 'Ψητό κοτόπουλο', 'slug' => 'psito-kotopoulo'],
+            'en' => ['title' => 'Roast chicken', 'slug' => 'roast-chicken', 'summary' => 'Crisp roast chicken.'],
+            'el' => ['title' => 'Ψητό κοτόπουλο', 'slug' => 'psito-kotopoulo', 'summary' => 'Τραγανό ψητό κοτόπουλο.'],
         ])->save();
 
         foreach ([1 => 'Season.', 2 => 'Roast.'] as $number => $text) {

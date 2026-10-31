@@ -26,4 +26,17 @@ class MediaFactory extends Factory
             'height' => 900,
         ];
     }
+
+    public function remote(?string $url = null): static
+    {
+        return $this->state(fn (): array => [
+            'disk' => 'remote',
+            'file_path' => null,
+            'url' => $url ?? fake()->unique()->imageUrl(),
+            'mime_type' => null,
+            'file_size' => null,
+            'width' => null,
+            'height' => null,
+        ]);
+    }
 }

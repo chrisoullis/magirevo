@@ -14,7 +14,7 @@ class SaveRecipeController extends Controller
             404,
         );
 
-        auth()->user()->savedRecipes()->toggle($recipe->id);
+        auth()->user()->favoriteRecipes()->toggle($recipe->id);
 
         return back()->with('status', 'Your recipe box has been updated.');
     }

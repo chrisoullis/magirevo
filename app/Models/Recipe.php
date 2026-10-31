@@ -11,9 +11,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Lang;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class Recipe extends Model
 {
@@ -22,9 +19,8 @@ class Recipe extends Model
     use Translatable;
 
     protected $fillable = [
-        'author_id', 'status', 'category', 'prep_minutes', 'cook_minutes', 'rest_minutes',
-        'base_servings', 'servings', 'difficulty', 'image_url', 'ingredients', 'instructions',
-        'is_featured', 'published_at',
+        'author_id', 'status', 'prep_minutes', 'cook_minutes', 'rest_minutes',
+        'base_servings', 'difficulty', 'is_featured', 'published_at',
     ];
 
     public array $translatedAttributes = [
@@ -50,8 +46,6 @@ class Recipe extends Model
     protected function casts(): array
     {
         return [
-            'ingredients' => 'array',
-            'instructions' => 'array',
             'prep_minutes' => 'integer',
             'cook_minutes' => 'integer',
             'rest_minutes' => 'integer',
@@ -66,9 +60,9 @@ class Recipe extends Model
         return $this->belongsTo(User::class, 'author_id');
     }
 
-    public function savedBy(): BelongsToMany
+    public function favoritedBy(): BelongsToMany
     {
-        return $this->belongsToMany(User::class)->withTimestamps();
+        return $this->belongsToMany(User::class, 'recipe_favorites')->withTimestamps();
     }
 
     public function ingredientGroups(): HasMany
@@ -135,9 +129,7 @@ class Recipe extends Model
     {
         $cover = $this->coverMedia();
 
-        return $cover
-            ? Storage::disk($cover->disk)->url($cover->file_path)
-            : (string) $this->image_url;
+        return $cover?->publicUrl() ?? asset('images/recipe-placeholder.svg');
     }
 
     public function coverAlt(): string
@@ -156,12 +148,6 @@ class Recipe extends Model
             return null;
         }
 
-        $key = 'site.difficulty.'.Str::snake(Str::slug($this->difficulty, '_'));
-
-        if (Lang::has($key)) {
-            return __($key);
-        }
-
         $name = Difficulty::query()->where('code', $this->difficulty)->first()?->translate(app()->getLocale())?->name;
 
         return $name ?? $this->difficulty;
@@ -176,6 +162,6 @@ class Recipe extends Model
 
     public function categoryLabel(): string
     {
-        return $this->primaryCategory()?->translate()?->name ?? (string) $this->category;
+        return $this->primaryCategory()?->translate()?->name ?? '';
     }
 }

@@ -20,7 +20,6 @@ class RecipeContentPresenter
 
     /**
      * Ingredient groups ready for display, scaled to the requested servings when given.
-     * Recipes without structured ingredients fall back to the legacy free-text list.
      *
      * @return list<array{name: ?string, items: list<array{quantity: ?string, name: string, note: ?string, optional: bool}>}>
      */
@@ -31,15 +30,6 @@ class RecipeContentPresenter
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
-
-        if ($lines->isEmpty()) {
-            return [[
-                'name' => null,
-                'items' => collect($recipe->ingredients ?? [])
-                    ->map(fn (string $text): array => ['quantity' => null, 'name' => $text, 'note' => null, 'optional' => false])
-                    ->all(),
-            ]];
-        }
 
         return $lines
             ->groupBy(fn (RecipeIngredient $line) => $line->ingredient_group_id ?? 0)
@@ -58,12 +48,6 @@ class RecipeContentPresenter
     public function steps(Recipe $recipe): array
     {
         $steps = $recipe->steps()->with('translations')->get();
-
-        if ($steps->isEmpty()) {
-            return collect($recipe->instructions ?? [])
-                ->map(fn (string $text): array => ['text' => $text, 'minutes' => null])
-                ->all();
-        }
 
         return $steps
             ->map(fn ($step): array => ['text' => (string) $step->translate()?->instruction, 'minutes' => $step->duration_minutes])

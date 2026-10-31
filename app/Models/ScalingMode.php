@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasImmutableCode;
 use Astrotomic\Translatable\Translatable;
 use Database\Factories\ScalingModeFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +19,7 @@ class ScalingMode extends Model
     /** @use HasFactory<ScalingModeFactory> */
     use HasFactory;
 
+    use HasImmutableCode;
     use Translatable;
 
     protected $fillable = [

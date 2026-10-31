@@ -10,7 +10,7 @@ class RecipePublishingService
 {
     public function publish(Recipe $recipe): Recipe
     {
-        $this->validateTranslatedContent($recipe);
+        $this->assertPublishable($recipe);
 
         return DB::transaction(function () use ($recipe): Recipe {
             $recipe->status = 'published';
@@ -54,9 +54,17 @@ class RecipePublishingService
     public function publishWithCompletenessChecks(Recipe $recipe): Recipe
     {
         $this->assertTransitionAllowed($recipe, 'published');
-        $this->validateCompleteness($recipe);
 
         return $this->publish($recipe);
+    }
+
+    /**
+     * The single gate for publication: complete English and Greek content, ingredients, steps and a cover.
+     */
+    public function assertPublishable(Recipe $recipe): void
+    {
+        $this->validateTranslatedContent($recipe);
+        $this->validateCompleteness($recipe);
     }
 
     public function validateCompleteness(Recipe $recipe): void
@@ -64,9 +72,15 @@ class RecipePublishingService
         $errors = [];
 
         $steps = $recipe->steps()->with('translations')->get();
+        $locales = config('translatable.locales');
 
-        if ($recipe->recipeIngredients()->doesntExist()) {
+        $ingredientLines = $recipe->recipeIngredients()->with('ingredient.translations')->get();
+
+        if ($ingredientLines->isEmpty()) {
             $errors['ingredients'] = 'Add at least one ingredient before publishing.';
+        } elseif ($ingredientLines->contains(fn ($line): bool => collect($locales)
+            ->contains(fn (string $locale): bool => blank($line->ingredient?->getTranslation($locale, false)?->name)))) {
+            $errors['ingredients'] = 'Every ingredient needs an English and Greek name before publishing.';
         }
 
         $stepsAreComplete = $steps->isNotEmpty() && $steps->every(fn ($step): bool => collect(config('translatable.locales'))
@@ -74,6 +88,10 @@ class RecipePublishingService
 
         if (! $stepsAreComplete) {
             $errors['steps'] = 'Add at least one cooking step with English and Greek instructions before publishing.';
+        }
+
+        if (collect($locales)->contains(fn (string $locale): bool => blank($recipe->getTranslation($locale, false)?->summary))) {
+            $errors['summary'] = 'English and Greek summaries are required before publishing.';
         }
 
         if (! $recipe->media()->wherePivot('role', 'cover')->exists()) {

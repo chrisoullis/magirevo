@@ -251,7 +251,7 @@ class RecipeStepsAndMediaTest extends TestCase
         }
 
         Storage::fake('public');
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->admin()->create();
         $recipe = Recipe::factory()->create();
         Filament::setCurrentPanel('admin');
 

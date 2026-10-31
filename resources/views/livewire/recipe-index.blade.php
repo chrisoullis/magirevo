@@ -1,6 +1,6 @@
 <div>
     <section class="hero-section" aria-labelledby="hero-title">
-        <div class="hero-image" style="background-image: linear-gradient(90deg, rgba(17, 29, 24, .78) 0%, rgba(17, 29, 24, .44) 48%, rgba(17, 29, 24, .08) 100%), url('{{ $featured?->image_url ?? 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=2000&q=85' }}')"></div>
+        <div class="hero-image" style="background-image: linear-gradient(90deg, rgba(17, 29, 24, .78) 0%, rgba(17, 29, 24, .44) 48%, rgba(17, 29, 24, .08) 100%), url('{{ $featured?->coverUrl() ?? asset('images/recipe-placeholder.svg') }}')"></div>
         <div class="hero-copy">
             <span class="eyebrow eyebrow-light"><span class="eyebrow-dot"></span> The everyday cookbook</span>
             <h1 id="hero-title">Good food.<br><em>Good company.</em></h1>
@@ -35,18 +35,7 @@
 
         <div class="recipe-grid" wire:loading.class="is-loading" wire:target="search, category">
             @forelse ($recipes as $recipe)
-                <article class="recipe-card" wire:key="recipe-{{ $recipe->id }}">
-                    <a class="recipe-card-image" href="{{ route('recipes.show', ['locale' => $locale, 'slug' => $recipe->slug], false) }}" aria-label="View {{ $recipe->title }} recipe">
-                        <img src="{{ $recipe->image_url }}" alt="{{ $recipe->title }}" loading="lazy" width="720" height="540">
-                        <span class="image-category">{{ $recipe->category }}</span>
-                    </a>
-                    <div class="recipe-card-copy">
-                        <div class="recipe-meta"><span>{{ $recipe->prep_minutes + $recipe->cook_minutes }} min</span><span class="meta-separator"></span><span>{{ $recipe->difficulty }}</span></div>
-                        <h3><a href="{{ route('recipes.show', ['locale' => $locale, 'slug' => $recipe->slug], false) }}">{{ $recipe->title }}</a></h3>
-                        <p>{{ $recipe->summary }}</p>
-                        <a class="text-link" href="{{ route('recipes.show', ['locale' => $locale, 'slug' => $recipe->slug], false) }}">Get the recipe <span aria-hidden="true">&#8594;</span></a>
-                    </div>
-                </article>
+                <x-recipe-card :recipe="$recipe" :locale="$locale" wire:key="recipe-{{ $recipe->id }}" />
             @empty
                 <div class="empty-state">
                     <span class="empty-mark" aria-hidden="true">&#10038;</span>
