@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Media;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use Illuminate\Support\Collection;
@@ -15,6 +16,9 @@ class RecipeContentPresenter
         '0.67' => '⅔',
         '0.75' => '¾',
     ];
+
+    /** Introductions longer than this push the method below the first screen, so a jump link is offered. */
+    public const LONG_INTRODUCTION_CHARACTERS = 600;
 
     public function __construct(private readonly ServingAdjustmentService $servingAdjustment) {}
 
@@ -43,14 +47,44 @@ class RecipeContentPresenter
     }
 
     /**
-     * @return list<array{text: string, minutes: ?int}>
+     * @return list<array{number: int, text: string, minutes: ?int, images: list<array{url: string, alt_text: string, caption: ?string, width: ?int, height: ?int}>, video: ?array{embed_url: string, title: string, caption: ?string}>
      */
-    public function steps(Recipe $recipe): array
+    public function steps(Recipe $recipe, ?string $locale = null): array
     {
-        $steps = $recipe->steps()->with('translations')->get();
+        $locale ??= app()->getLocale();
+        $steps = $recipe->relationLoaded('steps')
+            ? $recipe->steps
+            : $recipe->steps()->with(['translations', 'media.translations'])->get();
 
         return $steps
-            ->map(fn ($step): array => ['text' => (string) $step->translate()?->instruction, 'minutes' => $step->duration_minutes])
+            ->map(function ($step) use ($locale): array {
+                $media = $step->relationLoaded('media') ? $step->media : $step->media()->with('translations')->get();
+                $images = $media
+                    ->filter(fn (Media $item): bool => $item->pivot->kind === 'image' && $item->media_type === Media::TYPE_IMAGE)
+                    ->map(fn (Media $item): array => [
+                        'url' => $item->publicUrl(),
+                        'alt_text' => (string) ($item->getTranslation($locale, false)?->alt_text ?? ''),
+                        'caption' => $item->getTranslation($locale, false)?->caption,
+                        'width' => $item->width,
+                        'height' => $item->height,
+                    ])
+                    ->values()
+                    ->all();
+                $video = $media->first(fn (Media $item): bool => $item->pivot->kind === 'video' && $item->media_type === Media::TYPE_VIDEO);
+                $videoTranslation = $video?->getTranslation($locale, false);
+
+                return [
+                    'number' => $step->step_number,
+                    'text' => (string) $step->getTranslation($locale, false)?->instruction,
+                    'minutes' => $step->duration_minutes,
+                    'images' => $images,
+                    'video' => $video === null ? null : [
+                        'embed_url' => (string) $video->url,
+                        'title' => (string) $videoTranslation?->alt_text,
+                        'caption' => $videoTranslation?->caption,
+                    ],
+                ];
+            })
             ->filter(fn (array $step): bool => $step['text'] !== '')
             ->values()
             ->all();

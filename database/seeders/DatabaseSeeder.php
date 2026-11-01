@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call(UnitSeeder::class);
+        $this->call(AdditionalUnitSeeder::class);
         $this->call(CategorySeeder::class);
         $this->call(TagSeeder::class);
         $this->call(DifficultySeeder::class);

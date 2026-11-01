@@ -5,14 +5,17 @@ namespace App\Filament\Resources\Recipes\Schemas;
 use App\Models\Category;
 use App\Models\Difficulty;
 use App\Models\Ingredient;
+use App\Models\Media;
 use App\Models\Recipe;
 use App\Models\ScalingMode;
 use App\Models\Tag;
 use App\Models\Unit;
 use App\Services\GoogleTranslationService;
+use App\Support\TrustedVideoUrl;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
@@ -21,6 +24,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Html;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -28,7 +32,9 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Unique;
 
 class RecipeForm
@@ -241,7 +247,124 @@ class RecipeForm
                     ->maxLength(5000)
                     ->hintAction(self::translateAction('instruction_el', 'el', targetPath: 'instruction_en')),
                 TextInput::make('duration_minutes')->label('Duration (minutes)')->numeric()->integer()->minValue(1)->maxValue(32000),
+                Repeater::make('media_items')
+                    ->label('Step photographs')
+                    ->maxItems(3)
+                    ->reorderable()
+                    ->collapsible()
+                    ->addActionLabel('Add photograph')
+                    ->columns(2)
+                    ->schema([
+                        Hidden::make('media_id'),
+                        Html::make(fn (Get $get, ?Recipe $record): HtmlString|string => self::stepImagePreview($get, $record))
+                            ->columnSpanFull(),
+                        FileUpload::make('upload')
+                            ->label('Photograph')
+                            ->image()
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->maxSize(10240)
+                            ->rule(Rule::dimensions()->maxWidth(6000)->maxHeight(6000))
+                            ->storeFiles(false)
+                            ->required(fn (Get $get): bool => blank($get('media_id')))
+                            ->helperText('Images are resized to 1920px and optimized as WebP.')
+                            ->columnSpanFull(),
+                        Section::make('English')
+                            ->columns(1)
+                            ->schema([
+                                TextInput::make('alt_text_en')
+                                    ->label('English alt text')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->hintAction(self::translateAction('alt_text_en', 'en', targetPath: 'alt_text_el')),
+                                Textarea::make('caption_en')
+                                    ->label('English caption')
+                                    ->maxLength(1000)
+                                    ->hintAction(self::translateAction('caption_en', 'en', targetPath: 'caption_el')),
+                            ]),
+                        Section::make('Greek')
+                            ->columns(1)
+                            ->schema([
+                                TextInput::make('alt_text_el')
+                                    ->label('Greek alt text')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->hintAction(self::translateAction('alt_text_el', 'el', targetPath: 'alt_text_en')),
+                                Textarea::make('caption_el')
+                                    ->label('Greek caption')
+                                    ->maxLength(1000)
+                                    ->hintAction(self::translateAction('caption_el', 'el', targetPath: 'caption_en')),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
+                Section::make('Optional step video')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('video_url')
+                            ->label('YouTube or Vimeo URL')
+                            ->url()
+                            ->maxLength(2048)
+                            ->rules([
+                                fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                                    if (filled($value) && (! is_string($value) || TrustedVideoUrl::embedUrl($value) === null)) {
+                                        $fail(__('site.video_url_invalid'));
+                                    }
+                                },
+                            ])
+                            ->helperText('Paste a video URL from YouTube or Vimeo.')
+                            ->columnSpanFull(),
+                        Section::make('English')
+                            ->columns(1)
+                            ->schema([
+                                TextInput::make('video_alt_text_en')
+                                    ->label('English video title')
+                                    ->maxLength(255)
+                                    ->hintAction(self::translateAction('video_alt_text_en', 'en', targetPath: 'video_alt_text_el')),
+                                Textarea::make('video_caption_en')
+                                    ->label('English video caption')
+                                    ->maxLength(1000)
+                                    ->hintAction(self::translateAction('video_caption_en', 'en', targetPath: 'video_caption_el')),
+                            ]),
+                        Section::make('Greek')
+                            ->columns(1)
+                            ->schema([
+                                TextInput::make('video_alt_text_el')
+                                    ->label('Greek video title')
+                                    ->maxLength(255)
+                                    ->hintAction(self::translateAction('video_alt_text_el', 'el', targetPath: 'video_alt_text_en')),
+                                Textarea::make('video_caption_el')
+                                    ->label('Greek video caption')
+                                    ->maxLength(1000)
+                                    ->hintAction(self::translateAction('video_caption_el', 'el', targetPath: 'video_caption_en')),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
             ]);
+    }
+
+    private static function stepImagePreview(Get $get, ?Recipe $record): HtmlString|string
+    {
+        $mediaId = $get('media_id');
+
+        if ($record === null || ! is_numeric($mediaId)) {
+            return '';
+        }
+
+        $media = Media::query()
+            ->whereKey((int) $mediaId)
+            ->where('media_type', Media::TYPE_IMAGE)
+            ->whereHas('recipeSteps', fn (Builder $steps) => $steps
+                ->where('recipe_steps.recipe_id', $record->getKey())
+                ->where('recipe_step_media.kind', 'image'))
+            ->with('translations')
+            ->first();
+
+        if ($media === null) {
+            return '';
+        }
+
+        return new HtmlString(
+            '<img src="'.e($media->publicUrl()).'" alt="'.e($media->translate()?->alt_text ?? '').'" loading="lazy" decoding="async" style="max-width: 20rem; height: auto;">',
+        );
     }
 
     /**

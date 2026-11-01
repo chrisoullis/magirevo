@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Media;
 use App\Models\Recipe;
 use App\Services\RecipeAccessService;
 use App\Services\RecipeContentPresenter;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 
@@ -12,13 +14,7 @@ class RecipeController extends Controller
 {
     public function show(string $locale, string $slug, RecipeContentPresenter $presenter, RecipeAccessService $access): Response
     {
-        $recipe = Recipe::query()
-            ->with(['translations', 'categories.translations', 'tags.translations', 'media.translations', 'author'])
-            ->whereTranslation('slug', $slug, $locale)
-            ->first();
-
-        // 404 rather than 403 so private and shared recipes are indistinguishable from missing ones.
-        abort_if($recipe === null || ! $access->canView(Auth::user(), $recipe), 404);
+        $recipe = $this->findViewable($locale, $slug, $access);
 
         $isPublic = $recipe->isPubliclyAccessible();
 
@@ -54,9 +50,11 @@ class RecipeController extends Controller
             'recipe' => $recipe,
             'category' => $category,
             'related' => $related,
-            'steps' => $presenter->steps($recipe),
+            'steps' => $presenter->steps($recipe, $locale),
             'baseServings' => $presenter->baseServings($recipe),
-            'gallery' => $recipe->media->filter(fn ($media) => $media->pivot->role === 'gallery')->values(),
+            'gallery' => $recipe->media
+                ->filter(fn (Media $media): bool => $media->pivot->role === 'gallery' && $media->media_type === Media::TYPE_IMAGE)
+                ->values(),
             'alternateUrls' => $alternateUrls,
             'structuredData' => $isPublic ? $this->structuredData($recipe, $presenter, $locale, $alternateUrls[$locale], $category) : [],
         ]);
@@ -69,12 +67,59 @@ class RecipeController extends Controller
         return $response;
     }
 
+    public function print(Request $request, string $locale, string $slug, RecipeContentPresenter $presenter, RecipeAccessService $access): Response
+    {
+        $recipe = $this->findViewable($locale, $slug, $access);
+
+        if (! $recipe->isPubliclyAccessible()) {
+            $access->recordModerationAccess(Auth::user(), $recipe, 'site');
+        }
+
+        $base = $presenter->baseServings($recipe);
+        $requested = $request->query('servings');
+        $servings = is_numeric($requested) ? max(1, min(48, (int) $requested)) : $base;
+
+        $response = response()->view('recipes.print', [
+            'locale' => $locale,
+            'recipe' => $recipe,
+            'cover' => $recipe->coverMedia(),
+            'servings' => $servings,
+            'baseServings' => $base,
+            'groups' => $presenter->ingredientGroups($recipe, (string) $servings),
+            'steps' => $presenter->steps($recipe, $locale),
+            'backUrl' => route('recipes.show', ['locale' => $locale, 'slug' => $slug], false),
+        ]);
+
+        // The print view is never indexed; non-public recipes must not be cached either.
+        $response->header('X-Robots-Tag', 'noindex, nofollow, noarchive');
+
+        if (! $recipe->isPubliclyAccessible()) {
+            $response->header('Cache-Control', 'private, no-store');
+        }
+
+        return $response;
+    }
+
+    private function findViewable(string $locale, string $slug, RecipeAccessService $access): Recipe
+    {
+        $recipe = Recipe::query()
+            ->with(['translations', 'categories.translations', 'tags.translations', 'media.translations', 'steps.translations', 'steps.media.translations', 'author'])
+            ->whereTranslation('slug', $slug, $locale)
+            ->first();
+
+        // 404 rather than 403 so private and shared recipes are indistinguishable from missing ones.
+        abort_if($recipe === null || ! $access->canView(Auth::user(), $recipe), 404);
+
+        return $recipe;
+    }
+
     /**
      * @return list<array<string, mixed>>
      */
     private function structuredData(Recipe $recipe, RecipeContentPresenter $presenter, string $locale, string $url, $category): array
     {
         $images = $recipe->media
+            ->filter(fn (Media $media): bool => $media->media_type === Media::TYPE_IMAGE)
             ->toBase()
             ->map(fn ($media): string => $media->publicUrl())
             ->whenEmpty(fn ($collection) => $collection->push($recipe->coverUrl()))
@@ -101,8 +146,19 @@ class RecipeController extends Controller
             'recipeCategory' => $recipe->categoryLabel(),
             'keywords' => $recipe->tags->map(fn ($tag) => $tag->translate($locale)?->name)->filter()->implode(', ') ?: null,
             'recipeIngredient' => $presenter->plainIngredients($recipe),
-            'recipeInstructions' => collect($presenter->steps($recipe))
-                ->map(fn (array $step, int $index): array => ['@type' => 'HowToStep', 'position' => $index + 1, 'text' => $step['text']])
+            'recipeInstructions' => collect($presenter->steps($recipe, $locale))
+                ->map(fn (array $step): array => array_filter([
+                    '@type' => 'HowToStep',
+                    'position' => $step['number'],
+                    'text' => $step['text'],
+                    'image' => collect($step['images'])->pluck('url')->all(),
+                    'video' => $step['video'] === null ? null : array_filter([
+                        '@type' => 'VideoObject',
+                        'name' => $step['video']['title'],
+                        'description' => $step['video']['caption'],
+                        'embedUrl' => $step['video']['embed_url'],
+                    ], fn ($value) => $value !== null && $value !== ''),
+                ], fn ($value) => $value !== null && $value !== []))
                 ->all(),
         ], fn ($value) => $value !== null && $value !== []);
 

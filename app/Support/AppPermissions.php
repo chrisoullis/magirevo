@@ -52,6 +52,11 @@ final class AppPermissions
 
     public const ROLES_MANAGE = 'roles.manage';
 
+    /** Global switch for the consumer planner; what a person may do inside a household is a household role. */
+    public const PLANNER_USE = 'planner.use';
+
+    public const HOUSEHOLDS_CREATE = 'households.create';
+
     /** @var list<string> */
     public const LOOKUP_SUBJECTS = ['Category', 'Tag', 'Ingredient', 'Unit', 'Difficulty', 'ScalingMode'];
 
@@ -97,6 +102,8 @@ final class AppPermissions
             self::QUOTAS_MANAGE => 'Manage plans and quotas',
             self::USERS_MANAGE => 'Manage users and role assignments',
             self::ROLES_MANAGE => 'Manage roles and permissions',
+            self::PLANNER_USE => 'Use meal planner and shopping lists',
+            self::HOUSEHOLDS_CREATE => 'Create households',
         ];
     }
 
@@ -139,6 +146,8 @@ final class AppPermissions
             ->flatMap(fn (string $subject): array => ["ViewAny:{$subject}", "View:{$subject}"])
             ->all();
 
+        $planner = [self::PLANNER_USE, self::HOUSEHOLDS_CREATE];
+
         $contributor = [
             self::RECIPES_CREATE,
             self::RECIPES_VIEW_OWNED,
@@ -147,6 +156,7 @@ final class AppPermissions
             self::RECIPES_SUBMIT,
             self::RECIPES_SHARE,
             self::RECIPES_VIEW_SHARED,
+            ...$planner,
         ];
 
         return [
@@ -167,6 +177,7 @@ final class AppPermissions
             self::MEMBER => [
                 self::RECIPES_VIEW_SHARED,
                 self::CONTRIBUTORS_REQUEST,
+                ...$planner,
             ],
         ];
     }

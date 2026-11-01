@@ -67,6 +67,8 @@ class StoreMedia
             return DB::transaction(function () use ($translations, $dimensions, $path, $mimeType, $fileSize, $within, $disk): Media {
                 $media = Media::query()->create([
                     'disk' => $disk,
+                    'media_type' => Media::TYPE_IMAGE,
+                    'source' => Media::SOURCE_LOCAL,
                     'file_path' => $path,
                     'mime_type' => $mimeType,
                     'file_size' => $fileSize,

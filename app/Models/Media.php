@@ -22,6 +22,8 @@ class Media extends Model
 
     protected $fillable = [
         'disk',
+        'media_type',
+        'source',
         'file_path',
         'url',
         'credit',
@@ -48,14 +50,34 @@ class Media extends Model
 
     public const REMOTE_DISK = 'remote';
 
+    public const TYPE_IMAGE = 'image';
+
+    public const TYPE_VIDEO = 'video';
+
+    public const SOURCE_LOCAL = 'local';
+
+    public const SOURCE_REMOTE = 'remote';
+
+    public const SOURCE_EMBED = 'embed';
+
     public function isRemote(): bool
     {
-        return $this->disk === self::REMOTE_DISK;
+        return $this->source === self::SOURCE_REMOTE;
+    }
+
+    public function isLocal(): bool
+    {
+        return $this->source === self::SOURCE_LOCAL;
+    }
+
+    public function isEmbed(): bool
+    {
+        return $this->source === self::SOURCE_EMBED;
     }
 
     public function isPrivate(): bool
     {
-        return ! $this->isRemote() && $this->disk !== RecipeMediaStorage::PUBLIC_DISK;
+        return $this->isLocal() && $this->disk !== RecipeMediaStorage::PUBLIC_DISK;
     }
 
     /**
@@ -64,7 +86,7 @@ class Media extends Model
      */
     public function publicUrl(): string
     {
-        if ($this->isRemote()) {
+        if ($this->isRemote() || $this->isEmbed()) {
             return (string) $this->url;
         }
 
@@ -95,7 +117,7 @@ class Media extends Model
     public function recipeSteps(): BelongsToMany
     {
         return $this->belongsToMany(RecipeStep::class, 'recipe_step_media')
-            ->withPivot('sort_order')
+            ->withPivot(['kind', 'sort_order'])
             ->withTimestamps();
     }
 }

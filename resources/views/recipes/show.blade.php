@@ -20,6 +20,9 @@
 @php
     $cover = $recipe->coverMedia();
     $placeholder = asset('images/recipe-placeholder.svg');
+    $introductionHtml = $recipe->introduction ? \Filament\Forms\Components\RichEditor\RichContentRenderer::make($recipe->introduction)->toHtml() : '';
+    $showJump = mb_strlen(trim(strip_tags($introductionHtml))) > \App\Services\RecipeContentPresenter::LONG_INTRODUCTION_CHARACTERS;
+    $printUrl = route('recipes.print', ['locale' => $locale, 'slug' => $recipe->slug], false);
 @endphp
 
 @section('content')
@@ -31,6 +34,15 @@
                 <h1>{{ $recipe->title }}</h1>
                 <p>{{ $recipe->summary }}</p>
                 <div class="detail-stats"><span>{{ __('site.minutes_total', ['minutes' => $recipe->totalMinutes()]) }}</span>@if ($recipe->difficultyLabel())<span>{{ $recipe->difficultyLabel() }}</span>@endif<span>{{ __('site.serves', ['count' => $baseServings]) }}</span></div>
+                <div class="recipe-actions">
+                    @if ($showJump)
+                        <a class="button" href="#recipe-content" data-jump-to-recipe>{{ __('site.jump_to_recipe') }}</a>
+                    @endif
+                    @if ($steps !== [])
+                        <button class="button button-dark" type="button" data-cooking-start hidden>{{ __('site.cooking_mode_start') }}</button>
+                    @endif
+                    <a class="button" href="{{ $printUrl }}" target="_blank" rel="noopener" data-print-link>{{ __('site.print_recipe') }}</a>
+                </div>
                 @auth
                     @if ($isPublic && auth()->user()->hasVerifiedEmail())
                         <form class="save-recipe-form" method="post" action="{{ route('recipes.save', ['locale' => $locale, 'recipe' => $recipe], false) }}">
@@ -58,21 +70,90 @@
                 </figcaption>
             </figure>
         </header>
-        <div class="recipe-content">
+        <div class="recipe-content" id="recipe-content" tabindex="-1">
             @livewire('recipe-servings', ['recipeId' => $recipe->id, 'locale' => $locale, 'baseServings' => $baseServings])
             <section class="method-panel" aria-labelledby="method-title">
                 <span class="eyebrow"><span class="eyebrow-dot"></span> {{ __('site.step_eyebrow') }}</span>
                 <h2 id="method-title">{{ __('site.method_title') }}</h2>
-                @if ($recipe->introduction)
-                    <div class="recipe-description">{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($recipe->introduction) }}</div>
+                @if ($introductionHtml !== '')
+                    <div class="recipe-description">{!! $introductionHtml !!}</div>
                 @endif
                 <ol class="method-list">
                     @foreach ($steps as $step)
-                        <li><span class="step-number">{{ str_pad($loop->iteration, 2, '0', STR_PAD_LEFT) }}</span><p>{{ $step['text'] }}</p></li>
+                        <li>
+                            <span class="step-number">{{ str_pad($step['number'], 2, '0', STR_PAD_LEFT) }}</span>
+                            <div class="step-content">
+                                <p>{{ $step['text'] }}</p>
+                                @if ($step['minutes'])<span class="step-duration">{{ __('site.step_minutes', ['minutes' => $step['minutes']]) }}</span>@endif
+                                @include('recipes.partials.step-media')
+                            </div>
+                        </li>
                     @endforeach
                 </ol>
             </section>
         </div>
+        @if ($steps !== [])
+            <div class="cooking-overlay" role="dialog" aria-modal="true" aria-labelledby="cooking-title" data-cooking-overlay data-recipe-id="{{ $recipe->id }}" data-total="{{ count($steps) }}" hidden
+                data-label-progress="{{ __('site.cooking_mode_progress', ['current' => '{current}', 'total' => '{total}']) }}"
+                data-label-done-count="{{ __('site.cooking_completed_count', ['count' => '{count}']) }}"
+                data-label-timer-start="{{ __('site.timer_start', ['minutes' => '{minutes}']) }}"
+                data-label-timer-stop="{{ __('site.timer_stop') }}"
+                data-label-timer-finished="{{ __('site.timer_finished', ['step' => '{step}']) }}"
+                data-label-timer-running="{{ __('site.timer_running', ['step' => '{step}']) }}"
+                data-label-mark-done="{{ __('site.step_mark_done') }}"
+                data-label-marked-done="{{ __('site.step_marked_done') }}"
+                data-label-wake-on="{{ __('site.wake_lock_on') }}"
+                data-label-wake-off="{{ __('site.wake_lock_off') }}">
+                <div class="cooking-shell">
+                    <header class="cooking-top">
+                        <div>
+                            <p class="cooking-recipe">{{ $recipe->title }}</p>
+                            <h2 id="cooking-title" tabindex="-1" data-cooking-heading>{{ __('site.cooking_mode_title') }}</h2>
+                        </div>
+                        <div class="cooking-tools">
+                            <button class="button" type="button" data-text-smaller aria-label="{{ __('site.text_smaller') }}">A&minus;</button>
+                            <button class="button" type="button" data-text-larger aria-label="{{ __('site.text_larger') }}">A+</button>
+                            <button class="button" type="button" data-wake-toggle aria-pressed="false" hidden>{{ __('site.wake_lock_off') }}</button>
+                            <button class="button button-dark" type="button" data-cooking-close>{{ __('site.cooking_mode_close') }}</button>
+                        </div>
+                    </header>
+                    <div class="cooking-progress">
+                        <span data-cooking-progress aria-live="polite"></span>
+                        <span data-cooking-done-count></span>
+                        <div class="cooking-bar" role="progressbar" aria-label="{{ __('site.cooking_mode_title') }}" aria-valuemin="1" aria-valuemax="{{ count($steps) }}" aria-valuenow="1" data-cooking-bar><span></span></div>
+                    </div>
+                    <div class="cooking-timers" data-cooking-timers hidden></div>
+                    <p class="sr-only" role="alert" data-cooking-alert></p>
+                    <div class="cooking-body">
+                        <div class="cooking-steps">
+                            @foreach ($steps as $step)
+                                <section class="cooking-step" data-cooking-step data-step-number="{{ $step['number'] }}" @if ($step['minutes']) data-minutes="{{ $step['minutes'] }}" @endif hidden aria-labelledby="cook-step-{{ $step['number'] }}">
+                                    <h3 id="cook-step-{{ $step['number'] }}">{{ __('site.step_label', ['number' => $step['number']]) }}</h3>
+                                    <p class="cooking-step-text">{{ $step['text'] }}</p>
+                                    <div class="cooking-step-actions">
+                                        @if ($step['minutes'])
+                                            <button class="button" type="button" data-timer-toggle></button>
+                                        @endif
+                                        <button class="button" type="button" data-step-done aria-pressed="false"></button>
+                                    </div>
+                                    @include('recipes.partials.step-media')
+                                </section>
+                            @endforeach
+                        </div>
+                        <details class="cooking-ingredients" open>
+                            <summary>{{ __('site.ingredients') }}</summary>
+                            <p class="servings-note">{{ __('site.cooking_ingredients_note') }}</p>
+                            <div data-cooking-ingredients></div>
+                        </details>
+                    </div>
+                    <nav class="cooking-nav" aria-label="{{ __('site.cooking_mode_title') }}">
+                        <button class="button" type="button" data-cooking-previous>{{ __('site.cooking_mode_previous') }}</button>
+                        <button class="button button-dark" type="button" data-cooking-next>{{ __('site.cooking_mode_next') }}</button>
+                    </nav>
+                    <p class="cooking-note">{{ __('site.timer_background_note') }}</p>
+                </div>
+            </div>
+        @endif
         @if ($gallery->isNotEmpty())
             <section class="recipe-gallery" aria-label="{{ __('site.gallery') }}">
                 @foreach ($gallery as $image)

@@ -33,7 +33,7 @@ class RecipeMediaStorage
         $steps = $recipe->steps()->with('media')->get()->flatMap(fn ($step) => $step->media);
 
         $recipe->media()->get()->merge($steps)->unique('id')->each(function (Media $media): void {
-            if ($media->isRemote()) {
+            if (! $media->isLocal()) {
                 return;
             }
 

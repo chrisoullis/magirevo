@@ -74,6 +74,10 @@
                         @can(\App\Support\AppPermissions::RECIPES_VIEW_SHARED)
                             <a href="{{ route('recipes.shared', ['locale' => $currentLocale], false) }}">{{ __('sharing.nav') }}</a>
                         @endcan
+                        @can('viewAny', \App\Models\Household::class)
+                            <a href="{{ route('planner.index', ['locale' => $currentLocale], false) }}">{{ __('planner.nav') }}</a>
+                            <a href="{{ route('households.index', ['locale' => $currentLocale], false) }}">{{ __('households.nav') }}</a>
+                        @endcan
                         @can('create', \App\Models\ContributorRequest::class)
                             <a href="{{ route('contributor.show', ['locale' => $currentLocale], false) }}">{{ __('contributor.nav') }}</a>
                         @endcan

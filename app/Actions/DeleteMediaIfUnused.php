@@ -20,11 +20,11 @@ class DeleteMediaIfUnused
 
             $disk = $media->disk;
             $path = $media->file_path;
-            $isRemote = $media->isRemote();
+            $isLocal = $media->isLocal();
 
             $media->delete();
 
-            if (! $isRemote) {
+            if ($isLocal) {
                 DB::afterCommit(fn (): bool => Storage::disk($disk)->delete($path));
             }
 

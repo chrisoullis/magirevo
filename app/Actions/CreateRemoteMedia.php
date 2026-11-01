@@ -29,6 +29,8 @@ class CreateRemoteMedia
         return DB::transaction(function () use ($url, $translations, $credit, $creditUrl, $within): Media {
             $media = Media::query()->create([
                 'disk' => Media::REMOTE_DISK,
+                'media_type' => Media::TYPE_IMAGE,
+                'source' => Media::SOURCE_REMOTE,
                 'url' => $url,
                 'credit' => $credit,
                 'credit_url' => $creditUrl,

@@ -52,4 +52,55 @@ class GoogleTranslationTest extends TestCase
             ->callFormComponentAction('steps_data.0.instruction_el', 'translate_instruction_el')
             ->assertFormSet(['steps_data.0.instruction_en' => 'Cook it.']);
     }
+
+    public function test_step_media_text_actions_translate_captions_and_video_titles_in_both_directions(): void
+    {
+        config(['services.google_translate.key' => 'k']);
+        Http::fake(['*' => Http::sequence()
+            ->push(['data' => ['translations' => [['translatedText' => 'Greek alt']]]])
+            ->push(['data' => ['translations' => [['translatedText' => 'Greek caption']]]])
+            ->push(['data' => ['translations' => [['translatedText' => 'Greek video title']]]])
+            ->push(['data' => ['translations' => [['translatedText' => 'Greek video caption']]]])
+            ->push(['data' => ['translations' => [['translatedText' => 'English alt']]]])
+            ->push(['data' => ['translations' => [['translatedText' => 'English caption']]]])
+            ->push(['data' => ['translations' => [['translatedText' => 'English video title']]]])
+            ->push(['data' => ['translations' => [['translatedText' => 'English video caption']]]])]);
+
+        $component = Livewire::actingAs(User::factory()->admin()->create())
+            ->test(CreateRecipe::class)
+            ->fillForm([
+                'steps_data' => [[
+                    'media_items' => [[
+                        'alt_text_en' => 'English alt',
+                        'caption_en' => 'English caption',
+                        'alt_text_el' => 'Greek alt',
+                        'caption_el' => 'Greek caption',
+                    ]],
+                    'video_alt_text_en' => 'English video title',
+                    'video_caption_en' => 'English video caption',
+                    'video_alt_text_el' => 'Greek video title',
+                    'video_caption_el' => 'Greek video caption',
+                ]],
+            ]);
+
+        $component
+            ->callFormComponentAction('steps_data.0.media_items.0.alt_text_en', 'translate_alt_text_en')
+            ->assertFormSet(['steps_data.0.media_items.0.alt_text_el' => 'Greek alt'])
+            ->callFormComponentAction('steps_data.0.media_items.0.caption_en', 'translate_caption_en')
+            ->assertFormSet(['steps_data.0.media_items.0.caption_el' => 'Greek caption'])
+            ->callFormComponentAction('steps_data.0.video_alt_text_en', 'translate_video_alt_text_en')
+            ->assertFormSet(['steps_data.0.video_alt_text_el' => 'Greek video title'])
+            ->callFormComponentAction('steps_data.0.video_caption_en', 'translate_video_caption_en')
+            ->assertFormSet(['steps_data.0.video_caption_el' => 'Greek video caption'])
+            ->callFormComponentAction('steps_data.0.media_items.0.alt_text_el', 'translate_alt_text_el')
+            ->assertFormSet(['steps_data.0.media_items.0.alt_text_en' => 'English alt'])
+            ->callFormComponentAction('steps_data.0.media_items.0.caption_el', 'translate_caption_el')
+            ->assertFormSet(['steps_data.0.media_items.0.caption_en' => 'English caption'])
+            ->callFormComponentAction('steps_data.0.video_alt_text_el', 'translate_video_alt_text_el')
+            ->assertFormSet(['steps_data.0.video_alt_text_en' => 'English video title'])
+            ->callFormComponentAction('steps_data.0.video_caption_el', 'translate_video_caption_el')
+            ->assertFormSet(['steps_data.0.video_caption_en' => 'English video caption']);
+
+        Http::assertSentCount(8);
+    }
 }

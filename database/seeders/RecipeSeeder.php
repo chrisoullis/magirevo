@@ -210,6 +210,7 @@ class RecipeSeeder extends Seeder
             if ($recipe->media()->doesntExist()) {
                 $media = Media::query()->create([
                     'disk' => Media::REMOTE_DISK,
+                    'source' => Media::SOURCE_REMOTE,
                     'url' => $coverUrl,
                     'credit' => 'Photo via Unsplash (Unsplash License)',
                     'credit_url' => 'https://unsplash.com/license',

@@ -6,6 +6,7 @@ use App\Enums\RecipeVisibility;
 use App\Filament\Resources\Recipes\Actions\ReviewActions;
 use App\Filament\Resources\Recipes\Pages\Concerns\SavesRecipeContent;
 use App\Filament\Resources\Recipes\RecipeResource;
+use App\Models\Media;
 use App\Models\Recipe;
 use App\Services\RecipeAccessService;
 use App\Services\RecipePublishingService;
@@ -110,13 +111,32 @@ class EditRecipe extends EditRecord
             $data[$locale] = $translation?->only(['title', 'slug', 'summary', 'introduction', 'seo_title', 'seo_description']) ?? [];
         }
 
-        $data['steps_data'] = $recipe->steps()->with('translations')->get()
-            ->map(fn ($step): array => [
-                'id' => $step->id,
-                'instruction_en' => $step->getTranslation('en', false)?->instruction,
-                'instruction_el' => $step->getTranslation('el', false)?->instruction,
-                'duration_minutes' => $step->duration_minutes,
-            ])->all();
+        $data['steps_data'] = $recipe->steps()->with(['translations', 'media.translations'])->get()
+            ->map(function ($step): array {
+                $images = $step->media
+                    ->where('pivot.kind', 'image')
+                    ->where('media_type', Media::TYPE_IMAGE);
+                $video = $step->media->first(fn (Media $media): bool => $media->pivot->kind === 'video' && $media->media_type === Media::TYPE_VIDEO);
+
+                return [
+                    'id' => $step->id,
+                    'instruction_en' => $step->getTranslation('en', false)?->instruction,
+                    'instruction_el' => $step->getTranslation('el', false)?->instruction,
+                    'duration_minutes' => $step->duration_minutes,
+                    'media_items' => $images->map(fn (Media $media): array => [
+                        'media_id' => $media->id,
+                        'alt_text_en' => $media->getTranslation('en', false)?->alt_text,
+                        'caption_en' => $media->getTranslation('en', false)?->caption,
+                        'alt_text_el' => $media->getTranslation('el', false)?->alt_text,
+                        'caption_el' => $media->getTranslation('el', false)?->caption,
+                    ])->values()->all(),
+                    'video_url' => $video?->url,
+                    'video_alt_text_en' => $video?->getTranslation('en', false)?->alt_text,
+                    'video_caption_en' => $video?->getTranslation('en', false)?->caption,
+                    'video_alt_text_el' => $video?->getTranslation('el', false)?->alt_text,
+                    'video_caption_el' => $video?->getTranslation('el', false)?->caption,
+                ];
+            })->all();
 
         $data['ingredients_data'] = $recipe->recipeIngredients()->with('translations')->orderBy('sort_order')->get()
             ->map(fn ($line): array => [

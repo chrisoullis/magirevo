@@ -23,6 +23,7 @@ Route::pattern('locale', 'en|el');
 Route::prefix('{locale}')->middleware(SetLocale::class)->group(function (): void {
     Route::view('/', 'home')->name('home.localized');
     Route::get('/recipes/{slug}', [RecipeController::class, 'show'])->name('recipes.show');
+    Route::get('/recipes/{slug}/print', [RecipeController::class, 'print'])->name('recipes.print');
     Route::get('/categories/{slug}', [CategoryController::class, 'show'])->name('categories.show');
 
     Route::middleware(['auth', 'verified'])->group(function (): void {
@@ -30,6 +31,17 @@ Route::prefix('{locale}')->middleware(SetLocale::class)->group(function (): void
         Route::view('/recipes/{recipe}/sharing', 'recipes.sharing')->whereNumber('recipe')->name('recipes.sharing');
         Route::view('/contributor', 'contributor.show')->name('contributor.show');
         Route::get('/saved-recipes', SavedRecipesController::class)->name('recipes.saved');
+        Route::view('/planner', 'planner.show')->name('planner.index');
+        Route::view('/planner/templates', 'planner.templates')->name('planner.templates');
+        Route::view('/households/{household}/planner/templates', 'planner.templates')->whereNumber('household')->name('households.templates');
+        Route::view('/planner/batches', 'planner.batches')->name('planner.batches');
+        Route::view('/households/{household}/planner/batches', 'planner.batches')->whereNumber('household')->name('households.batches');
+        Route::view('/planner/shopping', 'planner.shopping')->name('planner.shopping');
+        Route::view('/households/{household}/planner/shopping', 'planner.shopping')->whereNumber('household')->name('households.shopping');
+        Route::view('/households/{household}/planner', 'planner.show')->whereNumber('household')->name('households.planner');
+        Route::view('/households', 'households.index')->name('households.index');
+        Route::view('/households/invitations/{token}', 'households.invitation')->middleware('throttle:20,1')->name('households.invitations.show');
+        Route::view('/households/{household}', 'households.show')->whereNumber('household')->name('households.show');
         Route::post('/recipes/{recipe}/save', SaveRecipeController::class)->name('recipes.save');
     });
 });

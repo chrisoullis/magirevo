@@ -42,7 +42,7 @@ class RecipeStep extends Model
     public function media(): BelongsToMany
     {
         return $this->belongsToMany(Media::class, 'recipe_step_media')
-            ->withPivot('sort_order')
+            ->withPivot(['kind', 'sort_order'])
             ->withTimestamps()
             ->orderByPivot('sort_order');
     }

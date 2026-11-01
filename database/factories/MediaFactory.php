@@ -19,6 +19,8 @@ class MediaFactory extends Factory
     {
         return [
             'disk' => 'public',
+            'media_type' => Media::TYPE_IMAGE,
+            'source' => Media::SOURCE_LOCAL,
             'file_path' => fake()->unique()->bothify('recipe-media/????????-####.webp'),
             'mime_type' => 'image/webp',
             'file_size' => 1024,
@@ -31,6 +33,7 @@ class MediaFactory extends Factory
     {
         return $this->state(fn (): array => [
             'disk' => 'remote',
+            'source' => Media::SOURCE_REMOTE,
             'file_path' => null,
             'url' => $url ?? fake()->unique()->imageUrl(),
             'mime_type' => null,
