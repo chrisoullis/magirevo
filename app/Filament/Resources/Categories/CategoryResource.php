@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Categories;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Categories\Pages\ListCategories;
+use App\Filament\Resources\Categories\Pages\ViewCategory;
 use App\Filament\Resources\Categories\Schemas\CategoryForm;
 use App\Filament\Resources\Categories\Tables\CategoriesTable;
 use App\Models\Category;
@@ -22,13 +23,19 @@ class CategoryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Recipe data';
+    protected static string|UnitEnum|null $navigationGroup = 'Recipe Management';
+
+    protected static ?string $navigationLabel = 'Categories';
 
     protected static ?int $navigationSort = 10;
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['translations']);
+        return parent::getEloquentQuery()
+            ->with(['translations', 'parent.translations', 'media.translations'])
+            ->withCount('children')
+            ->withRecipeCounts()
+            ->withRecipeCounts(publishedOnly: true);
     }
 
     public static function form(Schema $schema): Schema
@@ -53,6 +60,7 @@ class CategoryResource extends Resource
         return [
             'index' => ListCategories::route('/'),
             'create' => CreateCategory::route('/create'),
+            'view' => ViewCategory::route('/{record}'),
             'edit' => EditCategory::route('/{record}/edit'),
         ];
     }

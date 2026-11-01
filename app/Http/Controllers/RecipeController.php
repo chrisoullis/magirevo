@@ -3,18 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Recipe;
+use App\Services\RecipeAccessService;
 use App\Services\RecipeContentPresenter;
-use Illuminate\View\View;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 
 class RecipeController extends Controller
 {
-    public function show(string $locale, string $slug, RecipeContentPresenter $presenter): View
+    public function show(string $locale, string $slug, RecipeContentPresenter $presenter, RecipeAccessService $access): Response
     {
         $recipe = Recipe::query()
-            ->published()
             ->with(['translations', 'categories.translations', 'tags.translations', 'media.translations', 'author'])
             ->whereTranslation('slug', $slug, $locale)
-            ->firstOrFail();
+            ->first();
+
+        // 404 rather than 403 so private and shared recipes are indistinguishable from missing ones.
+        abort_if($recipe === null || ! $access->canView(Auth::user(), $recipe), 404);
+
+        $isPublic = $recipe->isPubliclyAccessible();
+
+        if (! $isPublic) {
+            $access->recordModerationAccess(Auth::user(), $recipe, 'site');
+        }
 
         $category = $recipe->primaryCategory();
 
@@ -28,13 +38,18 @@ class RecipeController extends Controller
             ->limit(3)
             ->get();
 
+        // A private or shared recipe may exist in one language only; the switcher then keeps the available one.
         $alternateUrls = collect(config('translatable.locales'))
             ->mapWithKeys(fn (string $alternate): array => [
-                $alternate => route('recipes.show', ['locale' => $alternate, 'slug' => $recipe->translate($alternate)->slug]),
+                $alternate => route('recipes.show', [
+                    'locale' => filled($recipe->getTranslation($alternate, false)?->slug) ? $alternate : $locale,
+                    'slug' => $recipe->getTranslation($alternate, false)?->slug ?: $slug,
+                ]),
             ])
             ->all();
 
-        return view('recipes.show', [
+        $response = response()->view('recipes.show', [
+            'isPublic' => $isPublic,
             'locale' => $locale,
             'recipe' => $recipe,
             'category' => $category,
@@ -43,8 +58,15 @@ class RecipeController extends Controller
             'baseServings' => $presenter->baseServings($recipe),
             'gallery' => $recipe->media->filter(fn ($media) => $media->pivot->role === 'gallery')->values(),
             'alternateUrls' => $alternateUrls,
-            'structuredData' => $this->structuredData($recipe, $presenter, $locale, $alternateUrls[$locale], $category),
+            'structuredData' => $isPublic ? $this->structuredData($recipe, $presenter, $locale, $alternateUrls[$locale], $category) : [],
         ]);
+
+        if (! $isPublic) {
+            $response->header('Cache-Control', 'private, no-store')
+                ->header('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        }
+
+        return $response;
     }
 
     /**

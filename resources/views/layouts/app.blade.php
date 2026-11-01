@@ -71,6 +71,12 @@
                 @auth
                     @if (auth()->user()->hasVerifiedEmail())
                         <a href="{{ route('recipes.saved', ['locale' => $currentLocale], false) }}">{{ __('site.recipe_box') }}</a>
+                        @can(\App\Support\AppPermissions::RECIPES_VIEW_SHARED)
+                            <a href="{{ route('recipes.shared', ['locale' => $currentLocale], false) }}">{{ __('sharing.nav') }}</a>
+                        @endcan
+                        @can('create', \App\Models\ContributorRequest::class)
+                            <a href="{{ route('contributor.show', ['locale' => $currentLocale], false) }}">{{ __('contributor.nav') }}</a>
+                        @endcan
                     @else
                         <a href="{{ route('verification.notice', [], false) }}">{{ __('site.verify_email') }}</a>
                     @endif

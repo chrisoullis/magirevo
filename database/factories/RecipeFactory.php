@@ -25,6 +25,7 @@ class RecipeFactory extends Factory
         return [
             'author_id' => User::factory(),
             'status' => 'draft',
+            'visibility' => 'private',
             'prep_minutes' => fake()->numberBetween(5, 30),
             'cook_minutes' => fake()->numberBetween(5, 60),
             'rest_minutes' => 0,
@@ -35,11 +36,22 @@ class RecipeFactory extends Factory
         ];
     }
 
+    public function shared(): static
+    {
+        return $this->state(['visibility' => 'shared']);
+    }
+
+    public function pending(): static
+    {
+        return $this->state(['status' => 'pending']);
+    }
+
     public function published(): static
     {
         return $this
             ->state(fn (): array => [
                 'status' => 'published',
+                'visibility' => 'public',
                 'published_at' => now(),
             ])
             ->afterMaking(function (Recipe $recipe): void {

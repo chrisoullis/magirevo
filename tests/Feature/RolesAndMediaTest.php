@@ -40,10 +40,11 @@ class RolesAndMediaTest extends TestCase
 
     public function test_only_administrators_can_publish_recipes(): void
     {
-        $recipe = Recipe::factory()->create();
+        $editor = User::factory()->editor()->create();
+        $recipe = Recipe::factory()->create(['author_id' => $editor->id]);
 
-        $this->assertFalse(User::factory()->editor()->create()->can('publish', $recipe));
-        $this->assertTrue(User::factory()->editor()->create()->can('submitForReview', $recipe));
+        $this->assertFalse($editor->can('publish', $recipe));
+        $this->assertTrue($editor->can('submitForReview', $recipe));
         $this->assertTrue(User::factory()->admin()->create()->can('publish', $recipe));
     }
 
@@ -113,7 +114,7 @@ class RolesAndMediaTest extends TestCase
 
     public function test_search_ignores_greek_accents_and_case(): void
     {
-        $recipe = Recipe::factory()->complete()->create(['status' => 'published', 'published_at' => now()]);
+        $recipe = Recipe::factory()->complete()->create(['status' => 'published', 'visibility' => 'public', 'published_at' => now()]);
         $recipe->fill(['el' => ['title' => 'Μουσακάς του κυρίου']])->save();
 
         Livewire::test(RecipeIndex::class, ['locale' => 'el'])

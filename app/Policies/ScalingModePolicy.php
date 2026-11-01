@@ -2,4 +2,12 @@
 
 namespace App\Policies;
 
-class ScalingModePolicy extends LookupPolicy {}
+use App\Models\ScalingMode;
+
+class ScalingModePolicy extends LookupPolicy
+{
+    protected function model(): string
+    {
+        return ScalingMode::class;
+    }
+}

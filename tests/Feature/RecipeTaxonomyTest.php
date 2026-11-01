@@ -83,16 +83,16 @@ class RecipeTaxonomyTest extends TestCase
     {
         $this->seed([CategorySeeder::class, TagSeeder::class]);
 
-        $this->assertSame(4, Category::query()->count());
-        $this->assertSame(8, DB::table('category_translations')->count());
+        $this->assertSame(68, Category::query()->count());
+        $this->assertSame(136, DB::table('category_translations')->count());
         $this->assertSame(5, Tag::query()->count());
         $this->assertSame(10, DB::table('tag_translations')->count());
         $this->assertSame('Χορτοφαγικά', Tag::query()->where('code', 'vegetarian')->firstOrFail()->translate('el')->name);
 
         $this->seed([CategorySeeder::class, TagSeeder::class]);
 
-        $this->assertSame(4, Category::query()->count());
-        $this->assertSame(8, DB::table('category_translations')->count());
+        $this->assertSame(68, Category::query()->count());
+        $this->assertSame(136, DB::table('category_translations')->count());
         $this->assertSame(5, Tag::query()->count());
         $this->assertSame(10, DB::table('tag_translations')->count());
     }
@@ -109,7 +109,7 @@ class RecipeTaxonomyTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame('remote', $recipe->coverMedia()->disk);
-        $this->assertTrue($recipe->categories()->where('code', 'weeknight')->exists());
+        $this->assertTrue($recipe->categories()->where('code', 'legume_dishes')->exists());
         $this->assertTrue($recipe->tags()->where('code', 'vegetarian')->exists());
     }
 

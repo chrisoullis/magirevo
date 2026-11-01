@@ -75,6 +75,19 @@ button { color: inherit; }
 .category-button:hover, .category-button.is-active { color: var(--green-dark); }
 .category-button.is-active { font-weight: 700; }
 .category-button.is-active::after { background: var(--orange); }
+.category-filter { min-width: 0; flex: 1 1 auto; }
+.category-sublist { gap: 18px; border-top: 1px solid var(--line); }
+.category-sublist .category-button { padding: 10px 0; font-size: 11px; }
+.category-count { color: var(--muted); font-weight: 400; }
+.category-banner { width: min(1320px, 100%); margin: 28px auto 0; }
+.category-banner img { display: block; width: 100%; aspect-ratio: 3 / 1; object-fit: cover; background: #efe9dd; }
+.category-banner figcaption { margin-top: 8px; color: var(--muted); font-size: 12px; }
+.subcategory-cards { width: min(1320px, calc(100% - 72px)); display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; margin: 0 auto; padding: 0 0 12px; }
+.subcategory-card { display: block; color: inherit; }
+.subcategory-card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #efe9dd; }
+.subcategory-card span { display: block; margin-top: 8px; font-size: 14px; }
+.subcategory-card small { color: var(--muted); }
+.subcategory-card:hover span { color: var(--green-dark); }
 .search-field { min-width: 192px; display: flex; align-items: center; gap: 9px; padding: 10px 0 10px 12px; border-left: 1px solid var(--line); color: var(--muted); }
 .search-field svg { width: 18px; height: 18px; flex: 0 0 18px; }
 .search-field input { width: 148px; padding: 0; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 12px; }
@@ -149,6 +162,8 @@ button { color: inherit; }
 .auth-intro { margin: 0 0 25px; color: var(--muted); font-size: 13px; }
 .auth-form { display: flex; flex-direction: column; }
 .auth-form > label:not(.remember-option) { margin: 14px 0 6px; font-size: 11px; font-weight: 700; }
+.auth-form > textarea { width: 100%; padding: 11px; border: 1px solid #cbd6cc; border-radius: 2px; outline: 0; color: var(--ink); background: white; font: inherit; font-size: 13px; resize: vertical; }
+.auth-form > textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(47,104,77,.12); }
 .auth-form > input { width: 100%; height: 44px; padding: 0 11px; border: 1px solid #cbd6cc; border-radius: 2px; outline: 0; color: var(--ink); background: white; font-size: 13px; }
 .auth-form > input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(47,104,77,.12); }
 .remember-option { display: flex; align-items: center; gap: 8px; margin: 14px 0; color: var(--muted); font-size: 11px; }

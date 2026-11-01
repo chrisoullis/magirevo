@@ -9,6 +9,7 @@ use App\Filament\Resources\Recipes\RelationManagers\MediaRelationManager;
 use App\Filament\Resources\Recipes\Schemas\RecipeForm;
 use App\Filament\Resources\Recipes\Tables\RecipesTable;
 use App\Models\Recipe;
+use App\Support\AppPermissions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -26,8 +27,25 @@ class RecipeResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['translations', 'categories.translations'])
+            ->manageableBy(auth()->user())
+            ->with(['translations', 'categories.translations', 'author', 'reviewer'])
             ->withoutGlobalScopes([SoftDeletingScope::class]);
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        if (! auth()->user()?->can(AppPermissions::RECIPES_REVIEW)) {
+            return null;
+        }
+
+        $pending = Recipe::query()->where('status', 'pending')->where('author_id', '<>', auth()->id())->count();
+
+        return $pending > 0 ? (string) $pending : null;
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Recipes waiting for review';
     }
 
     public static function form(Schema $schema): Schema

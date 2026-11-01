@@ -2,4 +2,12 @@
 
 namespace App\Policies;
 
-class TagPolicy extends LookupPolicy {}
+use App\Models\Tag;
+
+class TagPolicy extends LookupPolicy
+{
+    protected function model(): string
+    {
+        return Tag::class;
+    }
+}

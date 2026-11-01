@@ -20,12 +20,26 @@
         </div>
 
         <div class="recipe-tools">
-            <div class="category-list" role="group" aria-label="Filter recipes by category">
-                <button class="category-button {{ $category === '' ? 'is-active' : '' }}" type="button" wire:click="$set('category', '')" aria-pressed="{{ $category === '' ? 'true' : 'false' }}">All recipes</button>
-                @foreach ($categories as $recipeCategory)
-                    <button class="category-button {{ $category === $recipeCategory['code'] ? 'is-active' : '' }}" type="button" wire:click="$set('category', @js($recipeCategory['code']))" aria-pressed="{{ $category === $recipeCategory['code'] ? 'true' : 'false' }}">{{ $recipeCategory['name'] }}</button>
-                @endforeach
-            </div>
+            @if ($categoryCode === null)
+                @php
+                    $activeRoot = collect($categories)->first(fn ($root) => $category === $root['code'] || collect($root['children'])->contains('code', $category));
+                @endphp
+                <div class="category-filter">
+                    <div class="category-list" role="group" aria-label="Filter recipes by category">
+                        <button class="category-button {{ $category === '' ? 'is-active' : '' }}" type="button" wire:click="$set('category', '')" aria-pressed="{{ $category === '' ? 'true' : 'false' }}">All recipes</button>
+                        @foreach ($categories as $recipeCategory)
+                            <button class="category-button {{ $activeRoot && $activeRoot['code'] === $recipeCategory['code'] ? 'is-active' : '' }}" type="button" wire:click="$set('category', @js($recipeCategory['code']))" aria-pressed="{{ $category === $recipeCategory['code'] ? 'true' : 'false' }}">{{ $recipeCategory['name'] }} <span class="category-count">({{ $recipeCategory['count'] }})</span></button>
+                        @endforeach
+                    </div>
+                    @if ($activeRoot && count($activeRoot['children']) > 0)
+                        <div class="category-list category-sublist" role="group" aria-label="{{ $activeRoot['name'] }}">
+                            @foreach ($activeRoot['children'] as $child)
+                                <button class="category-button {{ $category === $child['code'] ? 'is-active' : '' }}" type="button" wire:click="$set('category', @js($child['code']))" aria-pressed="{{ $category === $child['code'] ? 'true' : 'false' }}">{{ $child['name'] }} <span class="category-count">({{ $child['count'] }})</span></button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            @endif
             <label class="search-field">
                 <span class="sr-only">Search recipes</span>
                 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4.2 4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>

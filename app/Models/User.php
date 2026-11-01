@@ -2,7 +2,8 @@
 
 namespace App\Models;
 
-use App\Enums\UserRole;
+use App\Enums\RecipeVisibility;
+use App\Support\AppPermissions;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -11,17 +12,30 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasRoles, Notifiable;
 
-    protected $attributes = ['role' => 'member'];
+    protected static function booted(): void
+    {
+        static::created(function (self $user): void {
+            UserEntitlement::query()->firstOrCreate(['user_id' => $user->getKey()], ['plan_id' => Plan::free()->getKey()]);
+        });
+    }
+
+    public function entitlement(): HasOne
+    {
+        return $this->hasOne(UserEntitlement::class);
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -33,18 +47,31 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'role' => UserRole::class,
         ];
     }
 
     public function isAdministrator(): bool
     {
-        return $this->role === UserRole::Admin && $this->hasVerifiedEmail();
+        return $this->hasRole(AppPermissions::ADMIN) && $this->hasVerifiedEmail();
     }
 
     public function isStaff(): bool
     {
-        return $this->role->canAccessAdminPanel() && $this->hasVerifiedEmail();
+        return $this->hasAnyRole([AppPermissions::ADMIN, AppPermissions::EDITOR]) && $this->hasVerifiedEmail();
+    }
+
+    public function sharedRecipes(): BelongsToMany
+    {
+        return $this->belongsToMany(Recipe::class, 'recipe_shares')
+            ->wherePivotNull('revoked_at')
+            ->where('recipes.visibility', RecipeVisibility::Shared->value)
+            ->withPivot(['permission', 'shared_by'])
+            ->withTimestamps();
+    }
+
+    public function recipesSharedByMe(): HasMany
+    {
+        return $this->hasMany(RecipeShare::class, 'shared_by');
     }
 
     public function favoriteRecipes(): BelongsToMany

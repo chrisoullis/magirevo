@@ -172,23 +172,54 @@ class RecipeIndex extends Component
     }
 
     /**
-     * @return Collection<int, array{code: string, name: string, slug: string}>
+     * Publicly visible root categories that have published recipes, each with its non-empty subcategories.
+     * Root counts are distinct recipes across the root and its subcategories.
+     *
+     * @return Collection<int, array{code: string, name: string, slug: string, count: int, children: list<array{code: string, name: string, slug: string, count: int}>}>
      */
     private function categoryOptions(): Collection
     {
-        return Category::query()
-            ->where('is_active', true)
-            ->whereHas('recipes', fn (Builder $recipe) => $recipe->published())
+        $categories = Category::query()
+            ->publiclyVisible()
+            ->withRecipeCounts(publishedOnly: true)
             ->with('translations')
-            ->orderBy('sort_order')
-            ->get()
-            ->map(fn (Category $category): array => [
-                'code' => $category->code,
-                'name' => (string) $category->translate($this->locale)?->name,
-                'slug' => (string) $category->translate($this->locale)?->slug,
-            ])
-            ->filter(fn (array $category): bool => $category['slug'] !== '')
+            ->ordered()
+            ->get();
+
+        $childrenByParent = $categories->whereNotNull('parent_id')->groupBy('parent_id');
+
+        return $categories
+            ->whereNull('parent_id')
+            ->filter(fn (Category $category): bool => (int) $category->published_total_recipes_count > 0)
+            ->map(fn (Category $category): ?array => $this->categoryOption($category, (int) $category->published_total_recipes_count, $childrenByParent->get($category->getKey(), collect())))
+            ->filter()
             ->values();
+    }
+
+    /**
+     * @param  Collection<int, Category>  $children
+     * @return array<string, mixed>|null
+     */
+    private function categoryOption(Category $category, int $count, Collection $children): ?array
+    {
+        $translation = $category->translate($this->locale);
+
+        if (blank($translation?->slug)) {
+            return null;
+        }
+
+        return [
+            'code' => $category->code,
+            'name' => (string) $translation->name,
+            'slug' => (string) $translation->slug,
+            'count' => $count,
+            'children' => $children
+                ->filter(fn (Category $child): bool => (int) $child->published_direct_recipes_count > 0)
+                ->map(fn (Category $child): ?array => $this->categoryOption($child, (int) $child->published_direct_recipes_count, collect()))
+                ->filter()
+                ->values()
+                ->all(),
+        ];
     }
 
     /**

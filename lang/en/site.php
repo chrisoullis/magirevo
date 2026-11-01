@@ -10,7 +10,7 @@ return [
     'verify_email' => 'Verify email',
     'log_in' => 'Log in',
     'log_out' => 'Log out',
-    'join' => 'Join the table',
+    'join' => 'Join Us',
     'default_title' => 'The Sunday Table | Recipes for real life',
     'default_description' => 'Good things happen around a table. Find relaxed, seasonal recipes for real life at The Sunday Table.',
     'footer_tagline' => 'Cook something good. Pass it around.',

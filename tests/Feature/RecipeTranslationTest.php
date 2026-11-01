@@ -89,6 +89,24 @@ class RecipeTranslationTest extends TestCase
         }
     }
 
+    public function test_slug_is_generated_from_title_and_unique_per_locale(): void
+    {
+        $first = Recipe::factory()->create();
+        $first->translateOrNew('en')->fill(['title' => 'Lemon soup']);
+        $first->translateOrNew('el')->fill(['title' => 'Αυγολέμονο']);
+        $first->save();
+
+        $second = Recipe::factory()->create();
+        $second->translateOrNew('en')->fill(['title' => 'Lemon soup']);
+        $second->translateOrNew('el')->fill(['title' => 'Custom', 'slug' => 'my-slug']);
+        $second->save();
+
+        $this->assertSame('lemon-soup', $first->fresh()->translate('en')->slug);
+        $this->assertSame('lemon-soup-1', $second->fresh()->translate('en')->slug);
+        $this->assertNotSame('', $first->fresh()->translate('el')->slug);
+        $this->assertSame('my-slug', $second->fresh()->translate('el')->slug);
+    }
+
     public function test_recipe_author_is_required(): void
     {
         $this->expectException(QueryException::class);

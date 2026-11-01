@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Services\RecipeMediaStorage;
 use Astrotomic\Translatable\Translatable;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 class Media extends Model
@@ -51,14 +53,36 @@ class Media extends Model
         return $this->disk === self::REMOTE_DISK;
     }
 
+    public function isPrivate(): bool
+    {
+        return ! $this->isRemote() && $this->disk !== RecipeMediaStorage::PUBLIC_DISK;
+    }
+
     /**
-     * Public URL for either an uploaded file or a remote image.
+     * Direct URL for public and remote images. Private files are only reachable through the authorized media route,
+     * which never exposes the storage path.
      */
     public function publicUrl(): string
     {
-        return $this->isRemote()
-            ? (string) $this->url
+        if ($this->isRemote()) {
+            return (string) $this->url;
+        }
+
+        return $this->isPrivate()
+            ? route('media.show', ['media' => $this->getKey()], false)
             : Storage::disk($this->disk)->url((string) $this->file_path);
+    }
+
+    public function categories(): HasMany
+    {
+        return $this->hasMany(Category::class);
+    }
+
+    public function isInUse(): bool
+    {
+        return $this->recipes()->exists()
+            || $this->recipeSteps()->exists()
+            || $this->categories()->exists();
     }
 
     public function recipes(): BelongsToMany

@@ -2,9 +2,12 @@
 
 namespace App\Filament\Resources\Recipes\Pages;
 
+use App\Enums\RecipeVisibility;
+use App\Filament\Resources\Recipes\Actions\ReviewActions;
 use App\Filament\Resources\Recipes\Pages\Concerns\SavesRecipeContent;
 use App\Filament\Resources\Recipes\RecipeResource;
 use App\Models\Recipe;
+use App\Services\RecipeAccessService;
 use App\Services\RecipePublishingService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -13,6 +16,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class EditRecipe extends EditRecord
@@ -24,14 +28,43 @@ class EditRecipe extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            $this->workflowAction('submitForReview', 'Submit for review', 'warning', ['draft'], fn (RecipePublishingService $service, Recipe $recipe) => $service->submitForReview($recipe)),
+            $this->workflowAction('submitForReview', 'Submit for review', 'warning', ['draft', 'published'], fn (RecipePublishingService $service, Recipe $recipe) => $service->submit(auth()->user(), $recipe), 'English and Greek content, ingredients, steps and a cover image are required. You cannot edit the recipe while it is in review.'),
+            ReviewActions::approve(),
+            ReviewActions::reject(),
+            $this->workflowAction('withdraw', 'Withdraw to edit', 'gray', ['pending', 'published'], fn (RecipePublishingService $service, Recipe $recipe) => $service->withdraw(auth()->user(), $recipe), 'Takes the recipe out of review or off the public site so you can edit it. It must be reviewed again before it is public.'),
             $this->workflowAction('publish', 'Publish', 'success', ['draft', 'pending'], fn (RecipePublishingService $service, Recipe $recipe) => $service->publishWithCompletenessChecks($recipe), 'Saved changes only: save the form first.'),
             $this->workflowAction('unpublish', 'Unpublish', 'gray', ['published'], fn (RecipePublishingService $service, Recipe $recipe) => $service->unpublish($recipe), null, 'publish'),
             $this->workflowAction('archive', 'Archive', 'gray', ['draft', 'published'], fn (RecipePublishingService $service, Recipe $recipe) => $service->archive($recipe)),
             $this->workflowAction('restoreToDraft', 'Restore to draft', 'gray', ['archived'], fn (RecipePublishingService $service, Recipe $recipe) => $service->restoreToDraft($recipe), null, 'archive'),
+            $this->visibilityAction('makePrivate', 'Make private', RecipeVisibility::Private),
+            $this->visibilityAction('makeShared', 'Make shared', RecipeVisibility::Shared),
             DeleteAction::make(),
             RestoreAction::make(),
         ];
+    }
+
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        app(RecipeAccessService::class)->recordModerationAccess(auth()->user(), $this->getRecord(), 'panel');
+    }
+
+    private function visibilityAction(string $name, string $label, RecipeVisibility $to): Action
+    {
+        return Action::make($name)
+            ->label($label)
+            ->color('gray')
+            ->authorize(fn (Recipe $record): bool => Gate::allows('changeVisibility', [$record, $to]))
+            ->visible(fn (Recipe $record): bool => ! $record->trashed() && $record->visibility !== $to)
+            ->requiresConfirmation()
+            ->action(function (Recipe $record) use ($to, $label): void {
+                app(RecipePublishingService::class)->changeVisibility($record, $to);
+
+                $this->refreshFormData(['visibility']);
+
+                Notification::make()->success()->title("{$label}: done")->send();
+            });
     }
 
     /**
@@ -60,7 +93,7 @@ class EditRecipe extends EditRecord
                     return;
                 }
 
-                $this->refreshFormData(['status', 'published_at']);
+                $this->refreshFormData(['status', 'visibility', 'published_at']);
 
                 Notification::make()->success()->title("{$label}: done")->send();
             });

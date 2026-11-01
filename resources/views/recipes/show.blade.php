@@ -4,12 +4,18 @@
 @section('meta_description', $recipe->seo_description ?: $recipe->summary)
 @section('og_title', ($recipe->seo_title ?: $recipe->title).' | The Sunday Table')
 @section('og_type', 'article')
-@section('og_image', $recipe->coverUrl())
+@if ($isPublic)
+    @section('og_image', $recipe->coverUrl())
+@else
+    @section('robots', 'noindex, nofollow, noarchive')
+@endif
 @section('canonical', $alternateUrls[$locale])
 
-@push('head')
-    <script type="application/ld+json">@json($structuredData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)</script>
-@endpush
+@if ($isPublic)
+    @push('head')
+        <script type="application/ld+json">@json($structuredData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)</script>
+    @endpush
+@endif
 
 @php
     $cover = $recipe->coverMedia();
@@ -26,7 +32,7 @@
                 <p>{{ $recipe->summary }}</p>
                 <div class="detail-stats"><span>{{ __('site.minutes_total', ['minutes' => $recipe->totalMinutes()]) }}</span>@if ($recipe->difficultyLabel())<span>{{ $recipe->difficultyLabel() }}</span>@endif<span>{{ __('site.serves', ['count' => $baseServings]) }}</span></div>
                 @auth
-                    @if (auth()->user()->hasVerifiedEmail())
+                    @if ($isPublic && auth()->user()->hasVerifiedEmail())
                         <form class="save-recipe-form" method="post" action="{{ route('recipes.save', ['locale' => $locale, 'recipe' => $recipe], false) }}">
                             @csrf
                             <button class="button button-dark" type="submit"><span aria-hidden="true">&#9825;</span> {{ auth()->user()->favoriteRecipes()->whereKey($recipe->id)->exists() ? __('site.remove_saved') : __('site.save_recipe') }}</button>
@@ -34,6 +40,9 @@
                     @else
                         <a class="button button-dark" href="{{ route('verification.notice', [], false) }}">{{ __('site.verify_to_save') }}</a>
                     @endif
+                    @can('share', $recipe)
+                        <a class="button" href="{{ route('recipes.sharing', ['locale' => $locale, 'recipe' => $recipe->id], false) }}">{{ __('sharing.manage_link') }}</a>
+                    @endcan
                 @else
                     <a class="button button-dark" href="{{ route('register', [], false) }}">{{ __('site.join_to_save') }} <span aria-hidden="true">&#8599;</span></a>
                 @endauth

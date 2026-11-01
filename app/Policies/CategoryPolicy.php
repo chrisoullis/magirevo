@@ -2,4 +2,12 @@
 
 namespace App\Policies;
 
-class CategoryPolicy extends LookupPolicy {}
+use App\Models\Category;
+
+class CategoryPolicy extends LookupPolicy
+{
+    protected function model(): string
+    {
+        return Category::class;
+    }
+}

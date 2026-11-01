@@ -9,7 +9,9 @@ use App\Models\Recipe;
 use App\Models\ScalingMode;
 use App\Models\Tag;
 use App\Models\Unit;
+use App\Services\GoogleTranslationService;
 use Closure;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -18,6 +20,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -66,7 +69,8 @@ class RecipeForm
                 }),
             TextInput::make("{$locale}.slug")
                 ->label('Slug')
-                ->required()
+                ->helperText('Generated from the title when left empty.')
+                ->extraAttributes(['wire:target' => "data.{$locale}.title"])
                 ->maxLength(255)
                 ->regex(self::SLUG_PATTERN)
                 ->unique(
@@ -75,9 +79,14 @@ class RecipeForm
                     ignorable: fn (?Recipe $record) => $record?->getTranslation($locale, false),
                     modifyRuleUsing: fn (Unique $rule): Unique => $rule->where('locale', $locale),
                 ),
-            Textarea::make("{$locale}.summary")->label('Summary')->rows(2)->maxLength(1000),
+            Textarea::make("{$locale}.summary")
+                ->label('Summary')
+                ->rows(2)
+                ->maxLength(1000)
+                ->hintAction(self::translateAction("{$locale}.summary", $locale)),
             RichEditor::make("{$locale}.introduction")
                 ->label('Introduction')
+                ->hintAction(self::translateAction("{$locale}.introduction", $locale, isHtml: true))
                 ->toolbarButtons([['bold', 'italic', 'underline', 'link'], ['h2', 'h3'], ['bulletList', 'orderedList', 'blockquote'], ['undo', 'redo']])
                 ->maxLength(10000)
                 ->columnSpanFull(),
@@ -94,12 +103,16 @@ class RecipeForm
         return [
             Section::make('Classification')->columns(2)->schema([
                 Select::make('categories')
-                    ->relationship(
-                        'categories',
-                        'code',
-                        fn (Builder $query) => $query->where('is_active', true)->orderBy('sort_order'),
-                    )
-                    ->getOptionLabelFromRecordUsing(fn (Category $category): string => $category->translate('en')?->name ?? $category->code)
+                    ->relationship('categories', 'code')
+                    ->options(fn (?Recipe $record): array => Category::query()
+                        ->with(['translations', 'parent.translations'])
+                        ->where(fn (Builder $categories) => $categories
+                            ->where(fn (Builder $active) => $active->publiclyVisible())
+                            ->when($record, fn (Builder $categories) => $categories->orWhereHas('recipes', fn (Builder $recipes) => $recipes->whereKey($record->getKey()))))
+                        ->hierarchyOrdered()
+                        ->get()
+                        ->mapWithKeys(fn (Category $category): array => [$category->getKey() => self::categoryLabel($category)])
+                        ->all())
                     ->multiple()
                     ->preload(),
                 Select::make('tags')
@@ -128,6 +141,11 @@ class RecipeForm
                     ->disabled()
                     ->dehydrated(false)
                     ->helperText('Use the workflow buttons at the top of the page to change the status.'),
+                Select::make('visibility')
+                    ->options(['private' => 'Private', 'shared' => 'Shared', 'public' => 'Public'])
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText('Change who can read the recipe with the visibility buttons at the top of the page.'),
                 DateTimePicker::make('published_at')->disabled()->dehydrated(false),
             ]),
         ];
@@ -210,10 +228,65 @@ class RecipeForm
             ->columns(2)
             ->schema([
                 Hidden::make('id'),
-                Textarea::make('instruction_en')->label('Instruction (EN)')->required()->rows(3)->maxLength(5000),
-                Textarea::make('instruction_el')->label('Instruction (EL)')->required()->rows(3)->maxLength(5000),
+                Textarea::make('instruction_en')
+                    ->label('Instruction (EN)')
+                    ->required()
+                    ->rows(3)
+                    ->maxLength(5000)
+                    ->hintAction(self::translateAction('instruction_en', 'en', targetPath: 'instruction_el')),
+                Textarea::make('instruction_el')
+                    ->label('Instruction (EL)')
+                    ->required()
+                    ->rows(3)
+                    ->maxLength(5000)
+                    ->hintAction(self::translateAction('instruction_el', 'el', targetPath: 'instruction_en')),
                 TextInput::make('duration_minutes')->label('Duration (minutes)')->numeric()->integer()->minValue(1)->maxValue(32000),
             ]);
+    }
+
+    /**
+     * Builds an action that translates the field's content into the other language
+     * and writes the result to the counterpart field.
+     */
+    private static function translateAction(string $sourcePath, string $sourceLocale, bool $isHtml = false, ?string $targetPath = null): Action
+    {
+        $targetLocale = $sourceLocale === 'en' ? 'el' : 'en';
+        $label = $targetLocale === 'el' ? 'Translate to Greek' : 'Translate to English';
+
+        return Action::make('translate_'.str_replace('.', '_', $sourcePath))
+            ->label($label)
+            ->icon('heroicon-m-language')
+            ->link()
+            ->action(function (Get $get, Set $set) use ($sourcePath, $sourceLocale, $targetLocale, $isHtml, $targetPath): void {
+                $text = $get($sourcePath);
+
+                if (! is_string($text) || blank(strip_tags($text))) {
+                    Notification::make()->title('Nothing to translate')->warning()->send();
+
+                    return;
+                }
+
+                $translated = app(GoogleTranslationService::class)->translate($text, $sourceLocale, $targetLocale, $isHtml);
+
+                if ($translated === null) {
+                    Notification::make()->title('Translation failed')->body('Google Translate is unavailable or not configured.')->danger()->send();
+
+                    return;
+                }
+
+                $set($targetPath ?? str_replace($sourceLocale.'.', $targetLocale.'.', $sourcePath), $translated);
+            });
+    }
+
+    private static function categoryLabel(Category $category): string
+    {
+        $name = $category->translate('en')?->name ?? $category->code;
+
+        if ($category->parent !== null) {
+            $name = ($category->parent->translate('en')?->name ?? $category->parent->code).' › '.$name;
+        }
+
+        return $category->isEffectivelyActive() ? $name : $name.' (inactive)';
     }
 
     private static function ingredientLabel(?Ingredient $ingredient): ?string

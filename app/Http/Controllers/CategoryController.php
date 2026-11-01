@@ -10,8 +10,8 @@ class CategoryController extends Controller
     public function show(string $locale, string $slug): View
     {
         $category = Category::query()
-            ->where('is_active', true)
-            ->with('translations')
+            ->publiclyVisible()
+            ->with(['translations', 'parent.translations', 'media.translations'])
             ->whereTranslation('slug', $slug, $locale)
             ->firstOrFail();
 
@@ -21,7 +21,20 @@ class CategoryController extends Controller
             ])
             ->all();
 
+        $subcategories = $category->isRoot()
+            ? Category::query()
+                ->publiclyVisible()
+                ->where('parent_id', $category->getKey())
+                ->withRecipeCounts(publishedOnly: true)
+                ->with(['translations', 'media.translations'])
+                ->ordered()
+                ->get()
+                ->filter(fn (Category $child): bool => (int) $child->published_direct_recipes_count > 0 && filled($child->translate($locale)?->slug))
+                ->values()
+            : collect();
+
         return view('categories.show', [
+            'subcategories' => $subcategories,
             'locale' => $locale,
             'category' => $category,
             'translation' => $category->translate($locale),

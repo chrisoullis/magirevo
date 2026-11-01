@@ -102,7 +102,7 @@ class RecipeStepsAndMediaTest extends TestCase
 
     public function test_uploaded_recipe_image_is_validated_stored_translated_and_attached(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $recipe = Recipe::factory()->create();
         $file = UploadedFile::fake()->createWithContent('summer-dish.png', $this->pngContent(1200, 900));
 
@@ -111,7 +111,8 @@ class RecipeStepsAndMediaTest extends TestCase
             'el' => ['alt_text' => 'Ένα μπολ με ψητά λαχανικά', 'caption' => 'Έτοιμο για σερβίρισμα'],
         ], 'cover');
 
-        Storage::disk('public')->assertExists($media->file_path);
+        Storage::disk('local')->assertExists($media->file_path);
+        $this->assertSame('local', $media->disk);
         $this->assertSame('image/png', $media->mime_type);
         $this->assertSame(1200, $media->width);
         $this->assertSame(900, $media->height);
@@ -126,7 +127,7 @@ class RecipeStepsAndMediaTest extends TestCase
 
     public function test_upload_rejects_non_image_files_without_persisting_them(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $recipe = Recipe::factory()->create();
 
         try {
@@ -144,12 +145,12 @@ class RecipeStepsAndMediaTest extends TestCase
         }
 
         $this->assertDatabaseCount('media', 0);
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_upload_rejects_images_over_the_configured_size_limit(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $recipe = Recipe::factory()->create();
 
         try {
@@ -167,12 +168,12 @@ class RecipeStepsAndMediaTest extends TestCase
         }
 
         $this->assertDatabaseCount('media', 0);
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_upload_rejects_images_exceeding_dimension_limits(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $recipe = Recipe::factory()->create();
 
         try {
@@ -190,12 +191,12 @@ class RecipeStepsAndMediaTest extends TestCase
         }
 
         $this->assertDatabaseCount('media', 0);
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_upload_requires_alt_text_in_both_supported_locales(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $recipe = Recipe::factory()->create();
 
         try {
@@ -213,12 +214,12 @@ class RecipeStepsAndMediaTest extends TestCase
         }
 
         $this->assertDatabaseCount('media', 0);
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_failed_media_attachment_rolls_back_database_changes_and_removes_stored_file(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $recipe = Recipe::factory()->create();
         $existingMedia = Media::factory()->create();
         $existingMedia->translations()->createMany([
@@ -241,7 +242,7 @@ class RecipeStepsAndMediaTest extends TestCase
         $this->assertDatabaseCount('media', 1);
         $this->assertDatabaseCount('media_translations', 2);
         $this->assertDatabaseCount('recipe_media', 1);
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_filament_recipe_action_uploads_validated_images(): void
@@ -250,7 +251,7 @@ class RecipeStepsAndMediaTest extends TestCase
             $this->markTestSkipped('Filament table rendering requires the PHP intl extension.');
         }
 
-        Storage::fake('public');
+        Storage::fake('local');
         $admin = User::factory()->admin()->create();
         $recipe = Recipe::factory()->create();
         Filament::setCurrentPanel('admin');
@@ -268,7 +269,7 @@ class RecipeStepsAndMediaTest extends TestCase
             ->assertHasNoFormErrors();
 
         $media = $recipe->fresh()->media()->firstOrFail();
-        Storage::disk('public')->assertExists($media->file_path);
+        Storage::disk('local')->assertExists($media->file_path);
         $this->assertSame('A plated recipe', $media->translate('en')->alt_text);
         $this->assertSame('Ένα σερβιρισμένο φαγητό', $media->translate('el')->alt_text);
     }

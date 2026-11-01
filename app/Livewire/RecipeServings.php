@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Recipe;
+use App\Services\RecipeAccessService;
 use App\Services\RecipeContentPresenter;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
@@ -50,7 +51,10 @@ class RecipeServings extends Component
     {
         app()->setLocale($this->locale);
 
-        $recipe = Recipe::query()->published()->with('translations')->findOrFail($this->recipeId);
+        $recipe = Recipe::query()->with('translations')->findOrFail($this->recipeId);
+
+        // Same rule as the page itself, so a revoked recipe stops rendering immediately.
+        abort_unless(app(RecipeAccessService::class)->canView(auth()->user(), $recipe), 404);
         $base = $presenter->baseServings($recipe);
         $current = $this->clamp($this->servings === '' ? $base : $this->servings, $base);
 

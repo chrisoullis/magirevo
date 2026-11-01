@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
-use App\Enums\UserRole;
 use App\Models\Category;
 use App\Models\Media;
 use App\Models\Recipe;
 use App\Models\Tag;
 use App\Models\User;
+use App\Support\AppPermissions;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -15,8 +15,7 @@ class RecipeSeeder extends Seeder
 {
     public function run(): void
     {
-        $author = User::query()
-            ->where('role', UserRole::Admin->value)
+        $author = User::role(AppPermissions::ADMIN)
             ->orderBy('id')
             ->first()
             ?? User::query()->firstOrCreate(
@@ -42,7 +41,7 @@ class RecipeSeeder extends Seeder
                     'seo_title' => 'Τραγανά ρεβίθια με γιαούρτι και μυρωδικά',
                     'seo_description' => 'Ρεβίθια με λεμόνι, δροσερό γιαούρτι και φρέσκα μυρωδικά για ένα ξεχωριστό δείπνο.',
                 ],
-                'category' => 'Weeknight',
+                'category' => 'legume_dishes',
                 'tags' => ['vegetarian'],
                 'prep_minutes' => 10,
                 'cook_minutes' => 25,
@@ -68,7 +67,7 @@ class RecipeSeeder extends Seeder
                     'seo_title' => 'Νουντλς με καμένο βούτυρο και μίσο',
                     'seo_description' => 'Νουντλς με καμένο βούτυρο, μίσο και φρέσκο λάιμ για ένα γρήγορο γεύμα.',
                 ],
-                'category' => 'Weeknight',
+                'category' => 'pasta_noodles',
                 'tags' => ['quick'],
                 'prep_minutes' => 8,
                 'cook_minutes' => 12,
@@ -94,7 +93,7 @@ class RecipeSeeder extends Seeder
                     'seo_title' => 'Ψητές ντομάτες και φασόλια σε ψωμί',
                     'seo_description' => 'Ψητές ντομάτες και κρεμώδη φασόλια σε φρυγανισμένο προζυμένιο ψωμί.',
                 ],
-                'category' => 'Vegetarian',
+                'category' => 'breakfast_brunch',
                 'tags' => ['vegetarian', 'budget-friendly'],
                 'prep_minutes' => 10,
                 'cook_minutes' => 35,
@@ -120,7 +119,7 @@ class RecipeSeeder extends Seeder
                     'seo_title' => 'Κέικ με ελαιόλαδο και εσπεριδοειδή',
                     'seo_description' => 'Αφράτο κέικ με πορτοκάλι, ελαιόλαδο και τραγανή ζαχαρένια κρούστα.',
                 ],
-                'category' => 'Baking',
+                'category' => 'cakes_muffins',
                 'tags' => ['baking', 'vegetarian'],
                 'prep_minutes' => 15,
                 'cook_minutes' => 45,
@@ -146,7 +145,7 @@ class RecipeSeeder extends Seeder
                     'seo_title' => 'Πατατοσαλάτα με πράσινα μυρωδικά',
                     'seo_description' => 'Ζεστές πατάτες με σάλτσα μυρωδικών, κάπαρη και τραγανή υφή.',
                 ],
-                'category' => 'Vegetarian',
+                'category' => 'green_vegetable_salads',
                 'tags' => ['vegetarian', 'gluten-free'],
                 'prep_minutes' => 15,
                 'cook_minutes' => 20,
@@ -172,7 +171,7 @@ class RecipeSeeder extends Seeder
                     'seo_title' => 'Πρωινά ψωμάκια με κάρδαμο και αχλάδι',
                     'seo_description' => 'Αφράτα ψωμάκια πρωινού με αχλάδι και κάρδαμο, ιδανικά ζεστά.',
                 ],
-                'category' => 'Brunch',
+                'category' => 'breakfast_pastries',
                 'tags' => ['baking', 'vegetarian'],
                 'prep_minutes' => 25,
                 'cook_minutes' => 30,
@@ -186,7 +185,7 @@ class RecipeSeeder extends Seeder
         foreach ($recipes as $recipeData) {
             $tagCodes = $recipeData['tags'];
             $coverUrl = $recipeData['cover'];
-            $categoryCode = Str::slug($recipeData['category']);
+            $categoryCode = $recipeData['category'];
             unset($recipeData['tags'], $recipeData['cover'], $recipeData['category']);
 
             $recipe = Recipe::query()
@@ -200,6 +199,7 @@ class RecipeSeeder extends Seeder
             $recipe->fill([
                 ...$recipeData,
                 'status' => 'published',
+                'visibility' => 'public',
                 'rest_minutes' => 0,
                 'published_at' => now(),
             ]);

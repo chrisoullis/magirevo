@@ -2,4 +2,12 @@
 
 namespace App\Policies;
 
-class DifficultyPolicy extends LookupPolicy {}
+use App\Models\Difficulty;
+
+class DifficultyPolicy extends LookupPolicy
+{
+    protected function model(): string
+    {
+        return Difficulty::class;
+    }
+}
