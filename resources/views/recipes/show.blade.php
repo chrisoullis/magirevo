@@ -161,6 +161,12 @@
                 @endforeach
             </section>
         @endif
+        @auth
+            @livewire('personal-recipe-notes', ['recipeId' => $recipe->id, 'locale' => $locale], key('recipe-notes-'.$recipe->id))
+        @endauth
+        @if ($isPublic)
+            @livewire('recipe-ratings', ['recipeId' => $recipe->id, 'locale' => $locale], key('recipe-ratings-'.$recipe->id))
+        @endif
         @if ($related->isNotEmpty())
             <section class="related-recipes">
                 <h2>{{ __('site.related') }}</h2>

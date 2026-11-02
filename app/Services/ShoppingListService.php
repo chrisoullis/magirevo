@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\HouseholdAbility;
 use App\Exceptions\StaleShoppingListException;
+use App\Models\Ingredient;
 use App\Models\MealPlan;
 use App\Models\ShoppingList;
 use App\Models\ShoppingListItem;
@@ -58,6 +59,59 @@ class ShoppingListService
         } catch (UniqueConstraintViolationException) {
             return $existing() ?? throw new StaleShoppingListException;
         }
+    }
+
+    /**
+     * Adds ingredient-only manual entries without inferring quantities from recipe servings.
+     *
+     * @param  Collection<int, Ingredient>  $ingredients
+     */
+    public function addMissingIngredients(User $actor, ShoppingList $list, Collection $ingredients): int
+    {
+        Gate::forUser($actor)->authorize('update', $list);
+
+        $ingredients = $ingredients
+            ->unique(fn (Ingredient $ingredient): int => (int) $ingredient->getKey())
+            ->values();
+        $ingredientIds = $ingredients
+            ->map(fn (Ingredient $ingredient): int => (int) $ingredient->getKey())
+            ->all();
+
+        if ($ingredientIds === []) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($list, $ingredients, $ingredientIds): int {
+            $lockedList = ShoppingList::query()->whereKey($list->getKey())->lockForUpdate()->firstOrFail();
+            $existingIngredientIds = $lockedList->items()
+                ->whereIn('ingredient_id', $ingredientIds)
+                ->pluck('ingredient_id')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+            $missingIngredients = $ingredients->reject(
+                fn (Ingredient $ingredient): bool => in_array((int) $ingredient->getKey(), $existingIngredientIds, true),
+            )->values();
+
+            if ($lockedList->items()->count() + $missingIngredients->count() > config('planner.max_shopping_items_per_list')) {
+                throw ValidationException::withMessages(['shoppingList' => __('planner.shopping.errors.limit')]);
+            }
+
+            foreach ($missingIngredients as $ingredient) {
+                $lockedList->items()->create([
+                    'ingredient_id' => $ingredient->getKey(),
+                    'is_manual' => true,
+                ]);
+            }
+
+            if ($missingIngredients->isNotEmpty()) {
+                $this->audit->record('shopping_list_missing_ingredients_added', [
+                    'shopping_list_id' => $lockedList->getKey(),
+                    'ingredient_count' => $missingIngredients->count(),
+                ]);
+            }
+
+            return $missingIngredients->count();
+        });
     }
 
     /**
@@ -196,7 +250,7 @@ class ShoppingListService
             ->map(fn (ShoppingListItem $item): array => [
                 'id' => $item->getKey(),
                 'version' => $item->version,
-                'name' => $item->is_manual ? $item->custom_name : (string) ($item->ingredient?->translateOrDefault($locale)?->name ?? $item->ingredient?->code),
+                'name' => $item->custom_name ?? (string) ($item->ingredient?->translateOrDefault($locale)?->name ?? $item->ingredient?->code),
                 'amount' => $amount($item->quantity, $item->unit),
                 'extra' => $item->extra_quantity !== null ? $amount($item->extra_quantity, $item->unit) : null,
                 'checked' => $item->isChecked(),

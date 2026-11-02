@@ -7,6 +7,7 @@ use Database\Factories\MealPlanEntryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MealPlanEntry extends Model
 {
@@ -51,5 +52,10 @@ class MealPlanEntry extends Model
     public function batch(): BelongsTo
     {
         return $this->belongsTo(BatchCook::class, 'batch_cook_id');
+    }
+
+    public function confirmedSubstitutions(): HasMany
+    {
+        return $this->hasMany(MealPlanEntrySubstitution::class);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\MealPlan;
 use App\Models\MealPlanEntry;
+use App\Models\MealPlanEntrySubstitution;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\User;
@@ -49,26 +50,57 @@ class PlanIngredientCollector
             ->each(fn (RecipeIngredient $line) => $line->setRelation('recipe', $includable[$line->recipe_id]))
             ->groupBy('recipe_id');
 
+        $confirmedSubstitutions = MealPlanEntrySubstitution::query()
+            ->whereIn('meal_plan_entry_id', $included->modelKeys())
+            ->with('ingredientSubstitution')
+            ->get()
+            ->filter(fn (MealPlanEntrySubstitution $confirmation): bool => $confirmation->ingredientSubstitution !== null
+                && $confirmation->ingredientSubstitution->status === 'approved'
+                && ($confirmation->ingredientSubstitution->recipe_id === null
+                    || (int) $confirmation->ingredientSubstitution->recipe_id === (int) $confirmation->recipe_id))
+            ->keyBy(fn (MealPlanEntrySubstitution $confirmation): string => $confirmation->meal_plan_entry_id.':'.$confirmation->recipe_ingredient_id);
+
         $requests = [];
         $meta = [];
 
         foreach ($included as $entry) {
             foreach ($recipeLines->get($entry->recipe_id, collect()) as $line) {
-                $requests[] = [$line, $entry->servings];
-                $meta[] = [$line, $entry->getKey()];
+                $confirmation = $confirmedSubstitutions->get($entry->getKey().':'.$line->getKey());
+
+                if (
+                    $confirmation !== null
+                    && (
+                        (int) $confirmation->ingredientSubstitution->ingredient_id !== (int) $line->ingredient_id
+                        || (int) $confirmation->ingredientSubstitution->replacement_ingredient_id
+                            !== (int) $confirmation->replacement_ingredient_id
+                    )
+                ) {
+                    $confirmation = null;
+                }
+
+                $meta[] = [$line, $entry->getKey(), $confirmation];
+
+                if ($confirmation === null) {
+                    $requests[count($meta) - 1] = [$line, $entry->servings];
+                }
             }
         }
 
         $scaled = $this->scaling->adjustMany($requests);
 
-        $lines = collect($meta)->map(fn (array $item, int $index): QuantityLine => new QuantityLine(
-            ingredientId: $item[0]->ingredient_id,
-            unit: $item[0]->unit,
-            quantity: $scaled[$index]['quantity'],
-            quantityMax: $scaled[$index]['quantity_max'],
-            isOptional: $item[0]->is_optional,
-            source: ['entry_id' => $item[1], 'recipe_id' => $item[0]->recipe_id],
-        ))->values()->all();
+        $lines = collect($meta)->map(function (array $item, int $index) use ($scaled): QuantityLine {
+            /** @var ?MealPlanEntrySubstitution $confirmation */
+            $confirmation = $item[2];
+
+            return new QuantityLine(
+                ingredientId: $confirmation?->replacement_ingredient_id ?? $item[0]->ingredient_id,
+                unit: $confirmation === null ? $item[0]->unit : null,
+                quantity: $confirmation === null ? $scaled[$index]['quantity'] : null,
+                quantityMax: $confirmation === null ? $scaled[$index]['quantity_max'] : null,
+                isOptional: $item[0]->is_optional,
+                source: ['entry_id' => $item[1], 'recipe_id' => $item[0]->recipe_id],
+            );
+        })->values()->all();
 
         return ['lines' => $lines, 'excluded_entry_ids' => $excluded->pluck('id')->all()];
     }

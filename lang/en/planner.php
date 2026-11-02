@@ -30,6 +30,7 @@ return [
     'nothing_planned' => 'Nothing planned.',
     'recipe_unavailable' => 'Recipe unavailable',
     'servings_count' => '{1} :count serving|[2,*] :count servings',
+    'confirmed_substitutions' => 'Confirmed alternatives:',
     'meals' => [
         'breakfast' => 'Breakfast',
         'lunch' => 'Lunch',

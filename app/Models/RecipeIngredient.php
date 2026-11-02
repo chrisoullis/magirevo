@@ -7,6 +7,7 @@ use Database\Factories\RecipeIngredientFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RecipeIngredient extends Model
 {
@@ -60,5 +61,10 @@ class RecipeIngredient extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    public function personalChanges(): HasMany
+    {
+        return $this->hasMany(UserRecipeIngredientChange::class);
     }
 }

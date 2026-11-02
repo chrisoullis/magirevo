@@ -68,6 +68,7 @@
             </nav>
             <nav class="main-nav" aria-label="{{ __('site.main_nav') }}">
                 <a href="{{ route('home.localized', ['locale' => $currentLocale], false) }}#recipes">{{ __('site.nav_recipes') }}</a>
+                <a href="{{ route('recipes.what-can-i-cook', ['locale' => $currentLocale], false) }}">{{ __('site.what_can_i_cook') }}</a>
                 @auth
                     @if (auth()->user()->hasVerifiedEmail())
                         <a href="{{ route('recipes.saved', ['locale' => $currentLocale], false) }}">{{ __('site.recipe_box') }}</a>

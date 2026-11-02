@@ -12,6 +12,9 @@
     @if ($isScaled)
         <p class="servings-scaled-note">{{ __('site.scaled_note', ['count' => $base]) }}</p>
     @endif
+    @if (session()->has('recipe-substitution-status'))
+        <p class="personal-ingredient-change-status" role="status">{{ session('recipe-substitution-status') }}</p>
+    @endif
     <div class="ingredient-tools">
         <button type="button" class="ingredient-reset" data-ingredient-reset hidden>{{ __('site.reset_ingredients') }}</button>
     </div>
@@ -29,6 +32,64 @@
                             @if ($item['optional'])<em>({{ __('site.optional') }})</em>@endif
                         </span>
                     </label>
+                    @if ($item['substitutions'] !== [])
+                        <details class="ingredient-substitution-suggestions">
+                            <summary>{{ __('site.ingredient_substitution_suggestions') }}</summary>
+                            <p class="ingredient-substitution-disclaimer">{{ __('site.cooking_substitution_disclaimer') }}</p>
+                            <ul>
+                                @foreach ($item['substitutions'] as $substitution)
+                                    <li>
+                                        <strong>{{ $substitution['name'] }}</strong>
+                                        @if ($substitution['explanation'])<span>{{ $substitution['explanation'] }}</span>@endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </details>
+                    @endif
+                    @if ($canPersonalize)
+                        <div class="personal-ingredient-change">
+                            @if ($item['personalChange'])
+                                <p>
+                                    <strong>{{ __('site.personal_substitution') }}</strong>
+                                    {{ $item['personalChange']['name'] }}
+                                    @if ($item['personalChange']['note'])<span> — {{ $item['personalChange']['note'] }}</span>@endif
+                                </p>
+                                <div class="personal-ingredient-change-actions">
+                                    <button type="button" wire:click="editPersonalChange({{ $item['recipe_ingredient_id'] }})">{{ __('site.personal_substitution_edit') }}</button>
+                                    <button type="button" wire:click="deletePersonalChange({{ $item['recipe_ingredient_id'] }})">{{ __('site.personal_substitution_delete') }}</button>
+                                </div>
+                            @else
+                                <button type="button" wire:click="editPersonalChange({{ $item['recipe_ingredient_id'] }})">{{ __('site.personal_substitution_add') }}</button>
+                            @endif
+                            @if ($editingRecipeIngredientId === $item['recipe_ingredient_id'])
+                                <form class="personal-ingredient-change-form" wire:submit="savePersonalChange({{ $item['recipe_ingredient_id'] }})">
+                                    <label for="ingredient-search-{{ $item['recipe_ingredient_id'] }}">{{ __('site.personal_substitution_search') }}</label>
+                                    <input
+                                        id="ingredient-search-{{ $item['recipe_ingredient_id'] }}"
+                                        type="search"
+                                        wire:model.live.debounce.300ms="ingredientSearch"
+                                        maxlength="100"
+                                        autocomplete="off"
+                                    >
+                                    <label for="ingredient-alternative-{{ $item['recipe_ingredient_id'] }}">{{ __('site.personal_substitution_alternative') }}</label>
+                                    <select id="ingredient-alternative-{{ $item['recipe_ingredient_id'] }}" wire:model="alternativeIngredientId" required>
+                                        <option value="">{{ __('site.personal_substitution_choose') }}</option>
+                                        @foreach ($ingredientOptions as $ingredientId => $ingredientName)
+                                            <option value="{{ $ingredientId }}">{{ $ingredientName }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('alternativeIngredientId')<p class="field-error">{{ $message }}</p>@enderror
+                                    <label for="ingredient-note-{{ $item['recipe_ingredient_id'] }}">{{ __('site.personal_substitution_note') }}</label>
+                                    <textarea id="ingredient-note-{{ $item['recipe_ingredient_id'] }}" wire:model="personalNote" rows="2" maxlength="500"></textarea>
+                                    @error('personalNote')<p class="field-error">{{ $message }}</p>@enderror
+                                    <div class="personal-ingredient-change-actions">
+                                        <button class="button button-dark" type="submit" wire:loading.attr="disabled">{{ __('site.personal_substitution_save') }}</button>
+                                        <button type="button" wire:click="cancelPersonalChange">{{ __('site.personal_substitution_cancel') }}</button>
+                                    </div>
+                                </form>
+                            @endif
+                        </div>
+                    @endif
                 </li>
             @endforeach
         </ul>

@@ -30,6 +30,7 @@ return [
     'nothing_planned' => 'Δεν έχει προγραμματιστεί κάτι.',
     'recipe_unavailable' => 'Η συνταγή δεν είναι διαθέσιμη',
     'servings_count' => '{1} :count μερίδα|[2,*] :count μερίδες',
+    'confirmed_substitutions' => 'Επιβεβαιωμένες εναλλακτικές:',
     'meals' => [
         'breakfast' => 'Πρωινό',
         'lunch' => 'Μεσημεριανό',

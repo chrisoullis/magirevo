@@ -109,6 +109,19 @@
                                         <span class="text-sm font-semibold">{{ $item['consumed'] ? __('planner.batches.eaten') : __('planner.batches.leftover_badge') }}</span>
                                     @endif
                                     <span class="text-sm">{{ trans_choice('planner.servings_count', $item['servings']) }}@if ($item['notes']) &middot; {{ $item['notes'] }}@endif</span>
+                                    @if ($item['substitutions'] !== [])
+                                        <div class="text-sm">
+                                            <strong>{{ __('planner.confirmed_substitutions') }}</strong>
+                                            <ul>
+                                                @foreach ($item['substitutions'] as $substitution)
+                                                    <li wire:key="entry-{{ $item['id'] }}-substitution-{{ $loop->index }}">
+                                                        {{ $substitution['original'] }} → {{ $substitution['replacement'] }}
+                                                        @if ($substitution['explanation']) — {{ $substitution['explanation'] }}@endif
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    @endif
 
                                     @if ($canEdit && $item['leftover'] && $item['consumed'])
                                         {{-- Eaten leftovers are history and stay read-only. --}}

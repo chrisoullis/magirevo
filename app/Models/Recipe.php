@@ -115,6 +115,21 @@ class Recipe extends Model
         return $this->hasMany(RecipeIngredient::class);
     }
 
+    public function personalNotes(): HasMany
+    {
+        return $this->hasMany(UserRecipeNote::class);
+    }
+
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(RecipeRating::class);
+    }
+
+    public function personalIngredientChanges(): HasMany
+    {
+        return $this->hasMany(UserRecipeIngredientChange::class);
+    }
+
     public function steps(): HasMany
     {
         return $this->hasMany(RecipeStep::class)->orderBy('step_number');

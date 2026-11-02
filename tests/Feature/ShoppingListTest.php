@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\MealType;
 use App\Exceptions\StaleShoppingListException;
 use App\Livewire\ShoppingListPage;
 use App\Models\Household;
 use App\Models\Ingredient;
+use App\Models\IngredientSubstitution;
 use App\Models\MealPlan;
 use App\Models\MealPlanEntry;
 use App\Models\Recipe;
@@ -14,6 +16,7 @@ use App\Models\ShoppingList;
 use App\Models\ShoppingListItem;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\MealPlanService;
 use App\Services\ShoppingListService;
 use Database\Seeders\AdditionalUnitSeeder;
 use Database\Seeders\UnitSeeder;
@@ -111,6 +114,90 @@ class ShoppingListTest extends TestCase
         $this->assertSame('900.0000', $item->quantity);
         $this->assertSame('g', $item->unit->code);
         $this->assertSame(1, $this->generatedCount($plan));
+    }
+
+    public function test_confirmed_substitutions_keep_no_inferred_quantity_and_other_lines_scale_to_servings(): void
+    {
+        $user = User::factory()->create();
+        $original = $this->ingredient('Yogurt', 'Γιαούρτι');
+        $replacement = $this->ingredient('Sour cream', 'Ξινή κρέμα');
+        $sugar = $this->ingredient('Sugar', 'Ζάχαρη');
+        $plan = $this->plan($user);
+        $recipe = $this->recipe($original, 'g', '200');
+        RecipeIngredient::factory()->create([
+            'recipe_id' => $recipe->getKey(),
+            'ingredient_id' => $sugar->getKey(),
+            'unit_id' => $this->unit('g')->getKey(),
+            'quantity' => '100',
+        ]);
+        $substitution = IngredientSubstitution::factory()->approved()->create([
+            'ingredient_id' => $original->getKey(),
+            'replacement_ingredient_id' => $replacement->getKey(),
+        ]);
+        $entry = app(MealPlanService::class)->addEntry(
+            $user,
+            $plan,
+            $recipe,
+            $plan->week_start,
+            MealType::Dinner,
+            4,
+            confirmedSubstitutions: [$original->getKey() => [
+                'substitution_id' => $substitution->getKey(),
+                'replacement_ingredient_id' => $replacement->getKey(),
+            ]],
+        );
+        $list = $this->generated($user, $plan);
+
+        $this->assertDatabaseHas('meal_plan_entry_substitutions', [
+            'meal_plan_entry_id' => $entry->getKey(),
+            'recipe_ingredient_id' => $recipe->recipeIngredients()->where('ingredient_id', $original->getKey())->value('id'),
+            'ingredient_substitution_id' => $substitution->getKey(),
+            'replacement_ingredient_id' => $replacement->getKey(),
+            'confirmed_by' => $user->getKey(),
+        ]);
+        $this->assertDatabaseHas('shopping_list_items', [
+            'shopping_list_id' => $list->getKey(),
+            'ingredient_id' => $replacement->getKey(),
+            'quantity' => null,
+            'unit_id' => null,
+            'is_manual' => false,
+        ]);
+        $this->assertDatabaseHas('shopping_list_items', [
+            'shopping_list_id' => $list->getKey(),
+            'ingredient_id' => $sugar->getKey(),
+            'quantity' => '200.0000',
+        ]);
+        $this->assertDatabaseMissing('shopping_list_items', [
+            'shopping_list_id' => $list->getKey(),
+            'ingredient_id' => $original->getKey(),
+        ]);
+
+        $changedReplacement = $this->ingredient('Crème fraîche', 'Κρέμα φρέσκα');
+        $substitution->update(['replacement_ingredient_id' => $changedReplacement->getKey()]);
+        $this->service()->generate($user, $list);
+
+        $this->assertDatabaseHas('shopping_list_items', [
+            'shopping_list_id' => $list->getKey(),
+            'ingredient_id' => $original->getKey(),
+            'quantity' => '400.0000',
+        ]);
+        $this->assertDatabaseMissing('shopping_list_items', [
+            'shopping_list_id' => $list->getKey(),
+            'ingredient_id' => $replacement->getKey(),
+        ]);
+        $this->assertDatabaseMissing('shopping_list_items', [
+            'shopping_list_id' => $list->getKey(),
+            'ingredient_id' => $changedReplacement->getKey(),
+        ]);
+
+        $substitution->update(['status' => 'inactive']);
+        $this->service()->generate($user, $list);
+
+        $this->assertDatabaseHas('shopping_list_items', [
+            'shopping_list_id' => $list->getKey(),
+            'ingredient_id' => $original->getKey(),
+            'quantity' => '400.0000',
+        ]);
     }
 
     private function generatedCount(MealPlan $plan): int

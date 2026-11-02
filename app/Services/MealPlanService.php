@@ -7,9 +7,12 @@ use App\Enums\MealType;
 use App\Exceptions\StaleMealPlanException;
 use App\Models\BatchCook;
 use App\Models\Household;
+use App\Models\IngredientSubstitution;
 use App\Models\MealPlan;
 use App\Models\MealPlanEntry;
+use App\Models\MealPlanEntrySubstitution;
 use App\Models\Recipe;
+use App\Models\RecipeIngredient;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -63,8 +66,19 @@ class MealPlanService
         }
     }
 
-    public function addEntry(User $actor, MealPlan $plan, Recipe $recipe, \DateTimeInterface|string $date, MealType $meal, int $servings, ?string $notes = null): MealPlanEntry
-    {
+    /**
+     * @param  array<int|string, array{substitution_id: int|string, replacement_ingredient_id: int|string}>  $confirmedSubstitutions
+     */
+    public function addEntry(
+        User $actor,
+        MealPlan $plan,
+        Recipe $recipe,
+        \DateTimeInterface|string $date,
+        MealType $meal,
+        int $servings,
+        ?string $notes = null,
+        array $confirmedSubstitutions = [],
+    ): MealPlanEntry {
         Gate::forUser($actor)->authorize('update', $plan);
 
         $day = CarbonImmutable::parse($date)->startOfDay();
@@ -72,7 +86,7 @@ class MealPlanService
         $this->assertServings($servings);
         $this->assertRecipeAddable($actor, $plan, $recipe);
 
-        return DB::transaction(function () use ($actor, $plan, $recipe, $day, $meal, $servings, $notes): MealPlanEntry {
+        return DB::transaction(function () use ($actor, $plan, $recipe, $day, $meal, $servings, $notes, $confirmedSubstitutions): MealPlanEntry {
             // Serialises additions so the entry limit cannot be exceeded by concurrent requests.
             MealPlan::query()->whereKey($plan->getKey())->lockForUpdate()->firstOrFail();
 
@@ -80,6 +94,7 @@ class MealPlanService
                 throw ValidationException::withMessages(['recipe' => __('planner.errors.entry_limit')]);
             }
 
+            $confirmedSubstitutions = $this->validatedSubstitutionChoices($recipe, $confirmedSubstitutions);
             $entry = $plan->entries()->create([
                 'recipe_id' => $recipe->getKey(),
                 'planned_on' => $day->toDateString(),
@@ -89,10 +104,96 @@ class MealPlanService
                 'added_by' => $actor->getKey(),
             ]);
 
+            if ($confirmedSubstitutions !== []) {
+                $lines = RecipeIngredient::query()
+                    ->where('recipe_id', $recipe->getKey())
+                    ->whereIn('ingredient_id', array_keys($confirmedSubstitutions))
+                    ->get(['id', 'ingredient_id']);
+
+                foreach ($lines as $line) {
+                    $entry->confirmedSubstitutions()->create([
+                        'recipe_id' => $recipe->getKey(),
+                        'recipe_ingredient_id' => $line->getKey(),
+                        'ingredient_substitution_id' => $confirmedSubstitutions[$line->ingredient_id]['substitution_id'],
+                        'replacement_ingredient_id' => $confirmedSubstitutions[$line->ingredient_id]['replacement_ingredient_id'],
+                        'confirmed_by' => $actor->getKey(),
+                        'confirmed_at' => now(),
+                    ]);
+                }
+            }
+
             $this->audit->record('meal_plan_entry_added', ['meal_plan_id' => $plan->getKey(), 'entry_id' => $entry->getKey(), 'recipe_id' => $recipe->getKey()]);
 
             return $entry;
         });
+    }
+
+    /**
+     * @param  array<int|string, array<string, mixed>>  $choices
+     * @return array<int, array{substitution_id: int, replacement_ingredient_id: int}>
+     */
+    public function validatedSubstitutionChoices(Recipe $recipe, array $choices): array
+    {
+        if (count($choices) > 100) {
+            throw ValidationException::withMessages(['substitutions' => __('site.substitution_invalid_confirmation')]);
+        }
+
+        $normalized = [];
+
+        foreach ($choices as $ingredientId => $choice) {
+            if (
+                (! is_int($ingredientId) && (! is_string($ingredientId) || ! ctype_digit($ingredientId)))
+                || ! is_array($choice)
+                || count($choice) !== 2
+                || ! array_key_exists('substitution_id', $choice)
+                || ! array_key_exists('replacement_ingredient_id', $choice)
+                || (! is_int($choice['substitution_id']) && (! is_string($choice['substitution_id']) || ! ctype_digit($choice['substitution_id'])))
+                || (! is_int($choice['replacement_ingredient_id']) && (! is_string($choice['replacement_ingredient_id']) || ! ctype_digit($choice['replacement_ingredient_id'])))
+                || (int) $ingredientId < 1
+                || (int) $choice['substitution_id'] < 1
+                || (int) $choice['replacement_ingredient_id'] < 1
+            ) {
+                throw ValidationException::withMessages(['substitutions' => __('site.substitution_invalid_confirmation')]);
+            }
+
+            $normalized[(int) $ingredientId] = [
+                'substitution_id' => (int) $choice['substitution_id'],
+                'replacement_ingredient_id' => (int) $choice['replacement_ingredient_id'],
+            ];
+        }
+
+        if ($normalized === []) {
+            return [];
+        }
+
+        $recipeIngredientIds = RecipeIngredient::query()
+            ->where('recipe_id', $recipe->getKey())
+            ->whereIn('ingredient_id', array_keys($normalized))
+            ->distinct()
+            ->pluck('ingredient_id')
+            ->map(fn (int|string $id): int => (int) $id)
+            ->all();
+        $substitutions = IngredientSubstitution::query()
+            ->approved()
+            ->applicableToRecipe((int) $recipe->getKey())
+            ->whereIn('id', array_column($normalized, 'substitution_id'))
+            ->get()
+            ->keyBy('id');
+
+        foreach ($normalized as $ingredientId => $choice) {
+            $substitution = $substitutions->get($choice['substitution_id']);
+
+            if (
+                ! in_array($ingredientId, $recipeIngredientIds, true)
+                || $substitution === null
+                || (int) $substitution->ingredient_id !== $ingredientId
+                || (int) $substitution->replacement_ingredient_id !== $choice['replacement_ingredient_id']
+            ) {
+                throw ValidationException::withMessages(['substitutions' => __('site.substitution_invalid_confirmation')]);
+            }
+        }
+
+        return $normalized;
     }
 
     /**
@@ -184,7 +285,14 @@ class MealPlanService
         Gate::forUser($viewer)->authorize('view', $plan);
 
         $entries = $plan->entries()
-            ->with(['recipe.translations', 'recipe.media.translations'])
+            ->with([
+                'recipe.translations',
+                'recipe.media.translations',
+                'confirmedSubstitutions.ingredientSubstitution.translations',
+                'confirmedSubstitutions.ingredientSubstitution.replacementIngredient.translations',
+                'confirmedSubstitutions.recipeIngredient.ingredient.translations',
+                'confirmedSubstitutions.replacementIngredient.translations',
+            ])
             ->orderBy('planned_on')
             ->orderBy('id')
             ->get();
@@ -195,6 +303,25 @@ class MealPlanService
             $recipe = $entry->recipe;
             $available = $recipe !== null && $this->recipeAccess->canView($viewer, $recipe);
             $translation = $available ? $recipe->displayTranslation($locale) : null;
+            $confirmedSubstitutions = $available
+                ? $entry->confirmedSubstitutions
+                    ->filter(fn (MealPlanEntrySubstitution $confirmation): bool => $confirmation->ingredientSubstitution?->status === 'approved'
+                        && ($confirmation->ingredientSubstitution->recipe_id === null
+                            || (int) $confirmation->ingredientSubstitution->recipe_id === (int) $entry->recipe_id)
+                        && (int) $confirmation->ingredientSubstitution->ingredient_id
+                            === (int) $confirmation->recipeIngredient->ingredient_id
+                        && (int) $confirmation->ingredientSubstitution->replacement_ingredient_id
+                            === (int) $confirmation->replacement_ingredient_id)
+                    ->map(fn (MealPlanEntrySubstitution $confirmation): array => [
+                        'original' => (string) ($confirmation->recipeIngredient->ingredient->translate($locale)?->name
+                            ?? $confirmation->recipeIngredient->ingredient->code),
+                        'replacement' => (string) ($confirmation->replacementIngredient->translate($locale)?->name
+                            ?? $confirmation->replacementIngredient->code),
+                        'explanation' => $confirmation->ingredientSubstitution->translate($locale)?->explanation,
+                    ])
+                    ->values()
+                    ->all()
+                : [];
 
             return [
                 'id' => $entry->getKey(),
@@ -206,6 +333,7 @@ class MealPlanService
                 'title' => $translation?->title,
                 'url' => $translation ? route('recipes.show', ['locale' => $translation->locale, 'slug' => $translation->slug], false) : null,
                 'notes' => $available ? $entry->notes : null,
+                'substitutions' => $confirmedSubstitutions,
                 'leftover' => $entry->batch_cook_id !== null,
                 'consumed' => $entry->consumed_at !== null,
                 'has_batch' => $entry->batch_cook_id === null && isset($batchSources[$entry->getKey()]),

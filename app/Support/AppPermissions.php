@@ -42,6 +42,10 @@ final class AppPermissions
 
     public const RECIPES_MODERATE_PRIVATE = 'recipes.moderate_private';
 
+    public const RECIPES_PERSONALIZE = 'recipes.personalize';
+
+    public const RECIPES_RATE = 'recipes.rate';
+
     public const CONTRIBUTORS_REQUEST = 'contributors.request';
 
     public const CONTRIBUTORS_REVIEW = 'contributors.review';
@@ -97,6 +101,8 @@ final class AppPermissions
             self::RECIPES_SHARE => 'Share own recipes with users',
             self::RECIPES_VIEW_SHARED => 'View recipes shared with me',
             self::RECIPES_MODERATE_PRIVATE => 'Moderate private recipes (audited)',
+            self::RECIPES_PERSONALIZE => 'Manage private recipe notes and ingredient changes',
+            self::RECIPES_RATE => 'Rate public recipes',
             self::CONTRIBUTORS_REQUEST => 'Request contributor access',
             self::CONTRIBUTORS_REVIEW => 'Review contributor requests',
             self::QUOTAS_MANAGE => 'Manage plans and quotas',
@@ -156,6 +162,8 @@ final class AppPermissions
             self::RECIPES_SUBMIT,
             self::RECIPES_SHARE,
             self::RECIPES_VIEW_SHARED,
+            self::RECIPES_PERSONALIZE,
+            self::RECIPES_RATE,
             ...$planner,
         ];
 
@@ -176,6 +184,8 @@ final class AppPermissions
             self::CONTRIBUTOR => $contributor,
             self::MEMBER => [
                 self::RECIPES_VIEW_SHARED,
+                self::RECIPES_PERSONALIZE,
+                self::RECIPES_RATE,
                 self::CONTRIBUTORS_REQUEST,
                 ...$planner,
             ],

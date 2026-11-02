@@ -22,6 +22,7 @@ Route::pattern('locale', 'en|el');
 
 Route::prefix('{locale}')->middleware(SetLocale::class)->group(function (): void {
     Route::view('/', 'home')->name('home.localized');
+    Route::view('/what-can-i-cook', 'what-can-i-cook')->name('recipes.what-can-i-cook');
     Route::get('/recipes/{slug}', [RecipeController::class, 'show'])->name('recipes.show');
     Route::get('/recipes/{slug}/print', [RecipeController::class, 'print'])->name('recipes.print');
     Route::get('/categories/{slug}', [CategoryController::class, 'show'])->name('categories.show');

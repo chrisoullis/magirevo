@@ -79,6 +79,26 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         return $this->belongsToMany(Recipe::class, 'recipe_favorites')->withTimestamps();
     }
 
+    public function recipeNotes(): HasMany
+    {
+        return $this->hasMany(UserRecipeNote::class);
+    }
+
+    public function recipeRatings(): HasMany
+    {
+        return $this->hasMany(RecipeRating::class);
+    }
+
+    public function recipeRatingReports(): HasMany
+    {
+        return $this->hasMany(RecipeRatingReport::class, 'reporter_id');
+    }
+
+    public function recipeIngredientChanges(): HasMany
+    {
+        return $this->hasMany(UserRecipeIngredientChange::class);
+    }
+
     public function households(): BelongsToMany
     {
         return $this->belongsToMany(Household::class, 'household_members')

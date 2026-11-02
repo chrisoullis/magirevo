@@ -25,7 +25,7 @@ class RecipeContentPresenter
     /**
      * Ingredient groups ready for display, scaled to the requested servings when given.
      *
-     * @return list<array{name: ?string, items: list<array{quantity: ?string, name: string, note: ?string, optional: bool}>}>
+     * @return list<array{name: ?string, items: list<array{recipe_ingredient_id: int, ingredient_id: int, quantity: ?string, name: string, note: ?string, optional: bool}>}>
      */
     public function ingredientGroups(Recipe $recipe, ?string $servings = null): array
     {
@@ -129,7 +129,7 @@ class RecipeContentPresenter
     }
 
     /**
-     * @return array{quantity: ?string, name: string, note: ?string, optional: bool}
+     * @return array{recipe_ingredient_id: int, ingredient_id: int, quantity: ?string, name: string, note: ?string, optional: bool}
      */
     private function line(Recipe $recipe, RecipeIngredient $line, ?string $servings): array
     {
@@ -164,6 +164,8 @@ class RecipeContentPresenter
         }
 
         return [
+            'recipe_ingredient_id' => (int) $line->getKey(),
+            'ingredient_id' => (int) $line->ingredient_id,
             'quantity' => $amount,
             'name' => ($isPlural && $unit === null ? $ingredient?->plural_name : null) ?: (string) ($ingredient?->name ?? $line->ingredient->code),
             'note' => filled($translation?->preparation_note) ? $translation->preparation_note : null,

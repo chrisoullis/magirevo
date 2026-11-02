@@ -45,6 +45,21 @@ class Ingredient extends Model
         return $this->hasMany(RecipeIngredient::class);
     }
 
+    public function substitutions(): HasMany
+    {
+        return $this->hasMany(IngredientSubstitution::class);
+    }
+
+    public function substitutionSuggestions(): HasMany
+    {
+        return $this->hasMany(IngredientSubstitution::class, 'replacement_ingredient_id');
+    }
+
+    public function personalRecipeIngredientChanges(): HasMany
+    {
+        return $this->hasMany(UserRecipeIngredientChange::class, 'alternative_ingredient_id');
+    }
+
     public function isInUse(): bool
     {
         return $this->recipeIngredients()->exists();

@@ -44,6 +44,8 @@ class RecipeController extends Controller
             ])
             ->all();
 
+        $ratingSummary = $isPublic ? $this->ratingSummary($recipe) : ['average' => null, 'count' => 0];
+
         $response = response()->view('recipes.show', [
             'isPublic' => $isPublic,
             'locale' => $locale,
@@ -56,12 +58,22 @@ class RecipeController extends Controller
                 ->filter(fn (Media $media): bool => $media->pivot->role === 'gallery' && $media->media_type === Media::TYPE_IMAGE)
                 ->values(),
             'alternateUrls' => $alternateUrls,
-            'structuredData' => $isPublic ? $this->structuredData($recipe, $presenter, $locale, $alternateUrls[$locale], $category) : [],
+            'structuredData' => $isPublic ? $this->structuredData(
+                $recipe,
+                $presenter,
+                $locale,
+                $alternateUrls[$locale],
+                $category,
+                $ratingSummary,
+            ) : [],
         ]);
 
         if (! $isPublic) {
-            $response->header('Cache-Control', 'private, no-store')
-                ->header('X-Robots-Tag', 'noindex, nofollow, noarchive');
+            $response->header('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        }
+
+        if (! $isPublic || Auth::check()) {
+            $response->header('Cache-Control', 'private, no-store');
         }
 
         return $response;
@@ -116,8 +128,14 @@ class RecipeController extends Controller
     /**
      * @return list<array<string, mixed>>
      */
-    private function structuredData(Recipe $recipe, RecipeContentPresenter $presenter, string $locale, string $url, $category): array
-    {
+    private function structuredData(
+        Recipe $recipe,
+        RecipeContentPresenter $presenter,
+        string $locale,
+        string $url,
+        $category,
+        array $ratingSummary,
+    ): array {
         $images = $recipe->media
             ->filter(fn (Media $media): bool => $media->media_type === Media::TYPE_IMAGE)
             ->toBase()
@@ -160,6 +178,13 @@ class RecipeController extends Controller
                     ], fn ($value) => $value !== null && $value !== ''),
                 ], fn ($value) => $value !== null && $value !== []))
                 ->all(),
+            'aggregateRating' => $ratingSummary['count'] > 0 ? [
+                '@type' => 'AggregateRating',
+                'ratingValue' => round((float) $ratingSummary['average'], 2),
+                'ratingCount' => $ratingSummary['count'],
+                'bestRating' => 5,
+                'worstRating' => 1,
+            ] : null,
         ], fn ($value) => $value !== null && $value !== []);
 
         $breadcrumbs = [
@@ -187,6 +212,22 @@ class RecipeController extends Controller
                     'item' => $crumb['url'],
                 ])->all(),
             ],
+        ];
+    }
+
+    /**
+     * @return array{average: ?float, count: int}
+     */
+    private function ratingSummary(Recipe $recipe): array
+    {
+        $summary = $recipe->ratings()
+            ->active()
+            ->selectRaw('COUNT(*) AS rating_count, AVG(rating) AS average_rating')
+            ->first();
+
+        return [
+            'average' => $summary->average_rating === null ? null : (float) $summary->average_rating,
+            'count' => (int) $summary->rating_count,
         ];
     }
 }
