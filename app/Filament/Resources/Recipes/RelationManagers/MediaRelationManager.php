@@ -7,6 +7,7 @@ use App\Actions\RemoveRecipeMedia;
 use App\Actions\StoreRecipeMedia;
 use App\Models\Media;
 use App\Models\Recipe;
+use App\Services\RecipeRevisionService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -35,7 +36,15 @@ class MediaRelationManager extends RelationManager
 
     public function isReadOnly(): bool
     {
-        return false;
+        return $this->isLiveRecipe();
+    }
+
+    /**
+     * Images of a public recipe change only through a reviewed revision.
+     */
+    private function isLiveRecipe(): bool
+    {
+        return app(RecipeRevisionService::class)->isLive($this->getOwnerRecord());
     }
 
     public function table(Table $table): Table
@@ -57,6 +66,7 @@ class MediaRelationManager extends RelationManager
             ->defaultSort('recipe_media.sort_order')
             ->headerActions([
                 Action::make('upload')
+                    ->hidden(fn (): bool => $this->isLiveRecipe())
                     ->label('Upload image')
                     ->schema([
                         FileUpload::make('file')
@@ -95,6 +105,7 @@ class MediaRelationManager extends RelationManager
                         });
                     }),
                 Action::make('addRemote')
+                    ->hidden(fn (): bool => $this->isLiveRecipe())
                     ->label('Add remote image')
                     ->schema([
                         TextInput::make('url')->label('Image URL (https)')->url()->required()->maxLength(2048),
@@ -123,6 +134,7 @@ class MediaRelationManager extends RelationManager
             ])
             ->recordActions([
                 Action::make('makeCover')
+                    ->hidden(fn (): bool => $this->isLiveRecipe())
                     ->label('Make cover')
                     ->visible(fn (Media $record): bool => $record->pivot->role !== 'cover')
                     ->action(function (Media $record): void {
@@ -142,6 +154,7 @@ class MediaRelationManager extends RelationManager
                         Notification::make()->success()->title('Cover image updated')->send();
                     }),
                 Action::make('editText')
+                    ->hidden(fn (): bool => $this->isLiveRecipe())
                     ->label('Edit text')
                     ->fillForm(fn (Media $record): array => [
                         'alt_text_en' => $record->getTranslation('en', false)?->alt_text,
@@ -162,6 +175,7 @@ class MediaRelationManager extends RelationManager
                         ])->save();
                     }),
                 Action::make('remove')
+                    ->hidden(fn (): bool => $this->isLiveRecipe())
                     ->label('Remove')
                     ->color('danger')
                     ->requiresConfirmation()

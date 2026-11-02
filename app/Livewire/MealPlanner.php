@@ -9,7 +9,9 @@ use App\Models\Household;
 use App\Models\MealPlan;
 use App\Models\MealPlanEntry;
 use App\Models\Recipe;
+use App\Models\Tag;
 use App\Services\BatchCookService;
+use App\Services\DietaryClaimVisibility;
 use App\Services\HouseholdAccess;
 use App\Services\MealPlanService;
 use Carbon\CarbonImmutable;
@@ -30,6 +32,8 @@ class MealPlanner extends Component
     public string $week = '';
 
     public string $search = '';
+
+    public string $dietaryClaim = '';
 
     public ?int $recipeId = null;
 
@@ -177,6 +181,27 @@ class MealPlanner extends Component
         }
     }
 
+    public function acknowledgeRecipeUpdate(MealPlanService $service, int $entryId, int $version): void
+    {
+        $entry = $this->entry($entryId);
+
+        if ($entry === null) {
+            $this->conflict();
+
+            return;
+        }
+
+        try {
+            $service->acknowledgeRecipeUpdate(auth()->user(), $entry, $version);
+        } catch (StaleMealPlanException) {
+            $this->conflict();
+
+            return;
+        }
+
+        session()->flash('status', __('planner.flash.recipe_update_acknowledged'));
+    }
+
     public function removeEntry(MealPlanService $service, int $entryId, int $version): void
     {
         $entry = $this->entry($entryId);
@@ -194,7 +219,7 @@ class MealPlanner extends Component
         session()->flash('status', __('planner.flash.removed'));
     }
 
-    public function render(MealPlanService $service, HouseholdAccess $access): View
+    public function render(MealPlanService $service, HouseholdAccess $access, DietaryClaimVisibility $claims): View
     {
         app()->setLocale($this->locale);
 
@@ -204,6 +229,16 @@ class MealPlanner extends Component
         $plan = $service->findPlan($user, $household, $start);
         $canEdit = $household === null ? $access->canUsePlanner($user) : $access->can($user, $household, HouseholdAbility::EditPlans);
         $selected = $this->recipeId ? Recipe::query()->with('translations')->find($this->recipeId) : null;
+        $publicClaimIndex = $claims->publicClaimIndex();
+        $dietaryClaims = $publicClaimIndex === []
+            ? collect()
+            : Tag::query()
+                ->whereIn('code', array_keys($publicClaimIndex))
+                ->where('is_active', true)
+                ->where('is_public_enabled', true)
+                ->with('translations')
+                ->orderBy('sort_order')
+                ->get();
 
         return view('livewire.meal-planner', [
             'household' => $household,
@@ -212,8 +247,9 @@ class MealPlanner extends Component
             'view' => $plan ? $service->weekView($user, $plan, $this->locale) : collect(),
             'canEdit' => $canEdit,
             'results' => $canEdit && $this->search !== ''
-                ? $service->searchRecipes($user, $household, $this->search, $this->locale)
+                ? $service->searchRecipes($user, $household, $this->search, $this->locale, 8, $this->dietaryClaim)
                 : collect(),
+            'dietaryClaims' => $dietaryClaims,
             'selectedTitle' => $selected && $service->recipeAddable($user, $household, $selected)
                 ? $selected->displayTranslation($this->locale)?->title
                 : null,

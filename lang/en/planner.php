@@ -14,6 +14,8 @@ return [
     'week_of' => 'Week of :date',
     'add_heading' => 'Add a recipe',
     'search_label' => 'Search recipes',
+    'dietary_filter' => 'Dietary classification',
+    'any_dietary_classification' => 'Any classification',
     'results' => 'Matching recipes',
     'no_results' => 'No recipes found.',
     'no_results_household' => 'No matching recipes that every household member can view.',
@@ -29,6 +31,8 @@ return [
     'remove' => 'Remove',
     'nothing_planned' => 'Nothing planned.',
     'recipe_unavailable' => 'Recipe unavailable',
+    'recipe_updated' => 'Recipe updated since you planned this meal. Your shopping list has not changed; review it and regenerate it when you are ready.',
+    'recipe_update_acknowledge' => 'Accept recipe update',
     'servings_count' => '{1} :count serving|[2,*] :count servings',
     'confirmed_substitutions' => 'Confirmed alternatives:',
     'meals' => [
@@ -38,6 +42,7 @@ return [
         'snack' => 'Snacks',
     ],
     'flash' => [
+        'recipe_update_acknowledged' => 'Recipe update accepted. Your shopping list was not changed.',
         'added' => 'Added to the plan.',
         'updated' => 'Entry updated.',
         'removed' => 'Entry removed.',

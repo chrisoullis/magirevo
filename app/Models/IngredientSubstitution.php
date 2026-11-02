@@ -22,6 +22,8 @@ class IngredientSubstitution extends Model
         'replacement_ingredient_id',
         'recipe_id',
         'status',
+        'validated_revision_id',
+        'validated_at',
     ];
 
     public array $translatedAttributes = [
@@ -31,6 +33,8 @@ class IngredientSubstitution extends Model
     protected static function booted(): void
     {
         static::saving(function (self $substitution): void {
+            $substitution->stampValidation();
+
             if ($substitution->recipe_id !== null
                 && ! RecipeIngredient::query()
                     ->where('recipe_id', $substitution->recipe_id)
@@ -41,6 +45,30 @@ class IngredientSubstitution extends Model
                 ]);
             }
         });
+    }
+
+    /**
+     * Approval of a recipe-specific substitution is tied to the revision that is current when it is granted. Any
+     * change to the pairing, recipe or status re-stamps it, and a later revision never inherits it.
+     */
+    private function stampValidation(): void
+    {
+        if ($this->recipe_id === null || $this->status !== 'approved') {
+            $this->validated_revision_id = null;
+            $this->validated_at = null;
+
+            return;
+        }
+
+        if (! $this->exists || $this->isDirty(['status', 'recipe_id', 'ingredient_id', 'replacement_ingredient_id'])) {
+            $this->validated_revision_id = Recipe::query()->whereKey($this->recipe_id)->value('current_revision_id');
+            $this->validated_at = now();
+        }
+    }
+
+    public function validatedRevision(): BelongsTo
+    {
+        return $this->belongsTo(RecipeRevision::class, 'validated_revision_id');
     }
 
     public function ingredient(): BelongsTo
@@ -65,8 +93,21 @@ class IngredientSubstitution extends Model
 
     public function scopeApplicableToRecipe(Builder $query, int $recipeId): Builder
     {
+        return $query->applicableToRecipes([$recipeId]);
+    }
+
+    /**
+     * General substitutions plus recipe-specific ones validated for the recipe's current revision. A recipe that has
+     * no revision yet only accepts unstamped rows.
+     *
+     * @param  list<int>  $recipeIds
+     */
+    public function scopeApplicableToRecipes(Builder $query, array $recipeIds): Builder
+    {
         return $query->where(fn (Builder $applicable): Builder => $applicable
-            ->whereNull('recipe_id')
-            ->orWhere('recipe_id', $recipeId));
+            ->whereNull('ingredient_substitutions.recipe_id')
+            ->orWhere(fn (Builder $specific): Builder => $specific
+                ->whereIn('ingredient_substitutions.recipe_id', $recipeIds)
+                ->whereRaw('ingredient_substitutions.validated_revision_id IS NOT DISTINCT FROM (SELECT current_revision_id FROM recipes WHERE recipes.id = ingredient_substitutions.recipe_id)')));
     }
 }

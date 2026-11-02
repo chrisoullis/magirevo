@@ -2,9 +2,11 @@
 
 namespace App\Livewire;
 
+use App\Enums\TagClassification;
 use App\Models\Category;
 use App\Models\Recipe;
 use App\Models\Tag;
+use App\Services\DietaryClaimVisibility;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -127,10 +129,32 @@ class RecipeIndex extends Component
         return Recipe::query()
             ->published()
             ->when($categoryCode !== null, fn (Builder $query) => $query->inCategory($categoryCode))
-            ->when($this->tag !== '', fn (Builder $query) => $query->whereHas('tags', fn (Builder $tag) => $tag->where('tags.code', $this->tag)))
+            ->when($this->tag !== '', fn (Builder $query) => $this->applyTagFilter($query))
             ->when($this->difficulty !== '', fn (Builder $query) => $query->where('difficulty', $this->difficulty))
             ->when(in_array((int) $this->time, self::TIME_LIMITS, true), fn (Builder $query) => $query->whereRaw('(prep_minutes + cook_minutes) <= ?', [(int) $this->time]))
             ->when(trim($this->search) !== '', fn (Builder $query) => $this->applySearch($query, trim($this->search)));
+    }
+
+    /**
+     * Editorial tags filter by association. Dietary claim tags match only recipes with a current approved claim.
+     */
+    private function applyTagFilter(Builder $query): Builder
+    {
+        $tag = Tag::query()->where('code', $this->tag)->where('is_active', true)->first();
+
+        if ($tag === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($tag->classification->isFreelyPublic()) {
+            return $query->whereHas('tags', fn (Builder $match) => $match->where('tags.code', $this->tag));
+        }
+
+        if ($tag->classification->isDietaryClaim()) {
+            return $query->whereIn('recipes.id', app(DietaryClaimVisibility::class)->recipeIdsWithPublicClaim($this->tag));
+        }
+
+        return $query->whereRaw('1 = 0');
     }
 
     private function applySearch(Builder $query, string $term): Builder
@@ -146,8 +170,10 @@ class RecipeIndex extends Component
                 ->where(fn (Builder $match) => $match
                     ->whereRaw($fold('title')." LIKE {$pattern}", [$like])
                     ->orWhereRaw($fold('summary')." LIKE {$pattern}", [$like])))
-                ->orWhereHas('tags.translations', fn (Builder $translation) => $translation
-                    ->where('locale', $locale)->whereRaw($fold('name')." LIKE {$pattern}", [$like]))
+                ->orWhereHas('tags', fn (Builder $tag) => $tag
+                    ->whereIn('classification', TagClassification::freelyPublicValues())
+                    ->whereHas('translations', fn (Builder $translation) => $translation
+                        ->where('locale', $locale)->whereRaw($fold('name')." LIKE {$pattern}", [$like])))
                 ->orWhereHas('recipeIngredients.ingredient.translations', fn (Builder $translation) => $translation
                     ->where('locale', $locale)->whereRaw($fold('name')." LIKE {$pattern}", [$like]));
         });
@@ -227,9 +253,15 @@ class RecipeIndex extends Component
      */
     private function tagOptions(): Collection
     {
+        $claimCodes = array_keys(app(DietaryClaimVisibility::class)->publicClaimIndex());
+
         return Tag::query()
             ->where('is_active', true)
-            ->whereHas('recipes', fn (Builder $recipe) => $recipe->published())
+            ->where(fn (Builder $tags) => $tags
+                ->where(fn (Builder $editorial) => $editorial
+                    ->whereIn('classification', TagClassification::freelyPublicValues())
+                    ->whereHas('recipes', fn (Builder $recipe) => $recipe->published()))
+                ->orWhereIn('code', $claimCodes))
             ->with('translations')
             ->orderBy('sort_order')
             ->get()

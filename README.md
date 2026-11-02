@@ -122,7 +122,7 @@ Notes:
 
 ### Seeders
 
-`php artisan db:seed` is idempotent (note: it resets the password of the `.env` administrator; run the individual seeders instead if you only want sample data) and runs, in order: `UnitSeeder`, `CategorySeeder`, `TagSeeder`, `DifficultySeeder`, `ScalingModeSeeder`, `IngredientSeeder`, `RecipeSeeder`, `RecipeContentSeeder`, plus the optional administrator from `.env`. Run an individual one with `php artisan db:seed --class=DifficultySeeder`.
+`php artisan db:seed` is idempotent (note: it resets the password of the `.env` administrator; run the individual seeders instead if you only want sample data) and runs, in order: `UnitSeeder`, `CategorySeeder`, `TagSeeder`, `DifficultySeeder`, `ScalingModeSeeder`, `IngredientSeeder`, `RecipeSeeder`, `RecipeContentSeeder`, plus the optional administrator from `.env`. Run an individual one with `php artisan db:seed --class=DifficultySeeder`. `RecipeSeeder` and `RecipeContentSeeder` only provide development sample data: they do nothing in production or while the published-content guard is set to `enforce`, and they never rewrite a recipe that is already live (use the revision workflow for that). The remaining seeders only write reference data.
 
 ## Using the Site
 

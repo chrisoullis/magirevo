@@ -11,7 +11,9 @@ use App\Models\MealPlan;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\ShoppingList;
+use App\Models\Tag;
 use App\Models\User;
+use App\Services\DietaryClaimVisibility;
 use App\Services\HouseholdAccess;
 use App\Services\MealPlanService;
 use App\Services\ShoppingListService;
@@ -45,6 +47,8 @@ class WhatCanICook extends Component
     public string $difficulty = '';
 
     public string $maximumMinutes = '';
+
+    public string $dietaryClaim = '';
 
     public function mount(string $locale): void
     {
@@ -99,7 +103,7 @@ class WhatCanICook extends Component
 
     public function clearFilters(): void
     {
-        $this->reset('onlyComplete', 'category', 'difficulty', 'maximumMinutes');
+        $this->reset('onlyComplete', 'category', 'difficulty', 'maximumMinutes', 'dietaryClaim');
         $this->resetErrorBag();
     }
 
@@ -203,7 +207,7 @@ class WhatCanICook extends Component
             ->map(fn (int|string $id): int => (int) $id);
         $missingIngredientIds = $requiredIngredientIds
             ->reject(fn (int $ingredientId): bool => in_array($ingredientId, $selectedIngredientIds, true))
-            ->map(function (int $ingredientId) use ($confirmedSubstitutions, $selectedIngredientIds): ?int {
+            ->map(function (int $ingredientId) use ($confirmedSubstitutions, $selectedIngredientIds, $recipe): ?int {
                 $choice = $confirmedSubstitutions[$ingredientId] ?? null;
 
                 if ($choice === null) {
@@ -212,6 +216,7 @@ class WhatCanICook extends Component
 
                 $replacementId = IngredientSubstitution::query()
                     ->approved()
+                    ->applicableToRecipe((int) $recipe->getKey())
                     ->whereKey($choice['substitution_id'])
                     ->where('ingredient_id', $ingredientId)
                     ->where('replacement_ingredient_id', $choice['replacement_ingredient_id'])
@@ -275,6 +280,11 @@ class WhatCanICook extends Component
             ->map(fn (Ingredient $ingredient): int => (int) $ingredient->getKey())
             ->all();
         $recipes = $selectedIngredientIds === [] ? collect() : $this->matchingRecipes($selectedIngredientIds);
+
+        if ($this->dietaryClaim !== '') {
+            $recipes = $recipes->reject(fn (Recipe $recipe): bool => $this->confirmedForRecipe($recipe, $plans) !== []);
+        }
+
         $matchDetails = $this->ingredientMatchDetails($recipes, $selectedIngredientIds);
         $results = $recipes
             ->map(fn (Recipe $recipe): array => [
@@ -305,6 +315,7 @@ class WhatCanICook extends Component
             'selectedIngredients' => $selectedIngredients,
             'categories' => $this->categoryOptions(),
             'difficulties' => $this->difficultyOptions(),
+            'dietaryClaims' => $this->dietaryClaimOptions(),
             'results' => $results,
             'canAddMissingIngredients' => $shoppingList !== null
                 && Gate::forUser($user)->allows('update', $shoppingList),
@@ -423,6 +434,28 @@ class WhatCanICook extends Component
             ]);
     }
 
+    private function dietaryClaimOptions(): Collection
+    {
+        $claimCodes = array_keys(app(DietaryClaimVisibility::class)->publicClaimIndex());
+
+        if ($claimCodes === []) {
+            return collect();
+        }
+
+        return Tag::query()
+            ->whereIn('code', $claimCodes)
+            ->where('is_active', true)
+            ->where('is_public_enabled', true)
+            ->with('translations')
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn (Tag $tag): ?array => filled($tag->translate($this->locale)?->name)
+                ? ['code' => $tag->code, 'name' => (string) $tag->translate($this->locale)->name]
+                : null)
+            ->filter()
+            ->values();
+    }
+
     /**
      * @param  list<int>  $selectedIngredientIds
      * @return Collection<int, Recipe>
@@ -495,6 +528,11 @@ class WhatCanICook extends Component
             $query->where('recipes.difficulty', $difficulty);
         }
 
+        if ($this->dietaryClaim !== '') {
+            $claimIndex = app(DietaryClaimVisibility::class)->publicClaimIndex();
+            $query->whereIn('recipes.id', $claimIndex[$this->dietaryClaim] ?? []);
+        }
+
         $maximumMinutes = filter_var($this->maximumMinutes, FILTER_VALIDATE_INT);
 
         if ($maximumMinutes !== false && $maximumMinutes !== null && $maximumMinutes >= 1 && $maximumMinutes <= 1440) {
@@ -533,9 +571,7 @@ class WhatCanICook extends Component
                 ->approved()
                 ->whereIn('ingredient_id', $originalIngredientIds)
                 ->whereHas('replacementIngredient', fn (Builder $replacement): Builder => $replacement->where('is_active', true))
-                ->where(fn (Builder $applicable): Builder => $applicable
-                    ->whereNull('recipe_id')
-                    ->orWhereIn('recipe_id', $recipes->modelKeys()))
+                ->applicableToRecipes($recipes->modelKeys())
                 ->with(['translations', 'replacementIngredient.translations'])
                 ->get()
                 ->groupBy('ingredient_id');

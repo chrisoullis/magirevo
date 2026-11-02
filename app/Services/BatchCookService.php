@@ -77,6 +77,7 @@ class BatchCookService
                     'household_id' => $household?->getKey(),
                     'created_by' => $actor->getKey(),
                     'recipe_id' => $recipe->getKey(),
+                    'recipe_revision_id' => $recipe->current_revision_id,
                     'source_entry_id' => $source?->getKey(),
                     'cooked_on' => CarbonImmutable::parse($cookedOn)->toDateString(),
                     'prepared_portions' => $portions,

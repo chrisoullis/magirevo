@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\TagClassification;
 use App\Models\Category;
 use App\Models\CategoryTranslation;
 use App\Models\Recipe;
@@ -85,16 +86,46 @@ class RecipeTaxonomyTest extends TestCase
 
         $this->assertSame(68, Category::query()->count());
         $this->assertSame(136, DB::table('category_translations')->count());
-        $this->assertSame(5, Tag::query()->count());
-        $this->assertSame(10, DB::table('tag_translations')->count());
+        $this->assertSame(6, Tag::query()->count());
+        $this->assertSame(12, DB::table('tag_translations')->count());
         $this->assertSame('Χορτοφαγικά', Tag::query()->where('code', 'vegetarian')->firstOrFail()->translate('el')->name);
 
         $this->seed([CategorySeeder::class, TagSeeder::class]);
 
         $this->assertSame(68, Category::query()->count());
         $this->assertSame(136, DB::table('category_translations')->count());
-        $this->assertSame(5, Tag::query()->count());
-        $this->assertSame(10, DB::table('tag_translations')->count());
+        $this->assertSame(6, Tag::query()->count());
+        $this->assertSame(12, DB::table('tag_translations')->count());
+    }
+
+    public function test_tag_seeder_preserves_existing_classification_and_translations(): void
+    {
+        $tag = Tag::factory()->create([
+            'code' => 'vegetarian',
+            'classification' => TagClassification::DietStyle,
+            'is_public_enabled' => false,
+            'is_active' => false,
+            'sort_order' => 99,
+        ]);
+        $tag->translations()->createMany([
+            ['locale' => 'en', 'name' => 'Reviewed vegetarian label', 'slug' => 'reviewed-vegetarian'],
+            ['locale' => 'el', 'name' => 'Ελεγμένη χορτοφαγική ετικέτα', 'slug' => 'elegmeni-chortofagiki'],
+        ]);
+
+        $this->seed(TagSeeder::class);
+
+        $tag->refresh();
+        $vegan = Tag::query()->where('code', 'vegan')->firstOrFail();
+
+        $this->assertSame(TagClassification::DietStyle, $tag->classification);
+        $this->assertFalse($tag->is_public_enabled);
+        $this->assertFalse($tag->is_active);
+        $this->assertSame(99, $tag->sort_order);
+        $this->assertSame('Reviewed vegetarian label', $tag->translate('en')->name);
+        $this->assertSame('Ελεγμένη χορτοφαγική ετικέτα', $tag->translate('el')->name);
+        $this->assertSame(TagClassification::DietStyle, $vegan->classification);
+        $this->assertSame('Vegan', $vegan->translate('en')->name);
+        $this->assertSame('Vegan', $vegan->translate('el')->name);
     }
 
     public function test_recipe_seeder_links_seeded_categories_and_attaches_a_remote_cover(): void

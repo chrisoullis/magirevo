@@ -8,13 +8,20 @@ use App\Models\Recipe;
 use App\Models\Tag;
 use App\Models\User;
 use App\Support\AppPermissions;
+use Database\Seeders\Concerns\ProtectsPublishedRecipes;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
 class RecipeSeeder extends Seeder
 {
+    use ProtectsPublishedRecipes;
+
     public function run(): void
     {
+        if (! $this->sampleRecipesAllowed()) {
+            return;
+        }
+
         $author = User::role(AppPermissions::ADMIN)
             ->orderBy('id')
             ->first()
@@ -191,6 +198,10 @@ class RecipeSeeder extends Seeder
             $recipe = Recipe::query()
                 ->whereTranslation('slug', $recipeData['en']['slug'], 'en')
                 ->first() ?? new Recipe;
+
+            if ($recipe->exists && $this->isLive($recipe)) {
+                continue;
+            }
 
             if (! $recipe->exists) {
                 $recipe->author()->associate($author);

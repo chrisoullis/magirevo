@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Tags\Schemas;
 
 use App\Filament\Support\TranslationTabs;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -27,6 +28,23 @@ class TagForm
                         ->regex('/^[a-z0-9]+(?:-[a-z0-9]+)*$/')
                         ->helperText('Lowercase letters, numbers and hyphens.')
                         ->unique(ignoreRecord: true),
+                    Select::make('classification')
+                        ->options([
+                            'unclassified' => 'Unclassified (hidden from the public)',
+                            'descriptive' => 'Descriptive (e.g. Quick, Baking)',
+                            'cuisine' => 'Cuisine',
+                            'diet_style' => 'Dietary style (claim, needs approval)',
+                            'nutrition_claim' => 'Nutrition claim (claim, needs approval)',
+                            'ingredient_allergen' => 'Ingredient / allergen information (claim, needs approval)',
+                        ])
+                        ->required()
+                        ->default('unclassified')
+                        ->helperText('Dietary classifications are only shown publicly for recipes with a current approved claim.'),
+                    Toggle::make('is_public_enabled')
+                        ->label('Allow public display of approved claims')
+                        ->default(false)
+                        ->inline(false)
+                        ->helperText('Leave off for gluten-free, allergen and nutrition claims until verification rules are reviewed.'),
                     TextInput::make('sort_order')->numeric()->integer()->default(0)->required(),
                     Toggle::make('is_active')->label('Active')->default(true)->inline(false),
                 ]),

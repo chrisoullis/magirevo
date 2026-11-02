@@ -61,6 +61,44 @@ final class AppPermissions
 
     public const HOUSEHOLDS_CREATE = 'households.create';
 
+    public const DIETARY_CLAIMS_VIEW = 'dietary_claims.view';
+
+    public const DIETARY_CLAIMS_SUGGEST = 'dietary_claims.suggest';
+
+    public const DIETARY_CLAIMS_FLAG = 'dietary_claims.flag';
+
+    /** Approve or reject claims. Held by administrators only at first; qualified reviewers can be granted it later. */
+    public const DIETARY_CLAIMS_REVIEW = 'dietary_claims.review';
+
+    /** Additionally required for gluten-free, allergen and nutrition claims. */
+    public const DIETARY_CLAIMS_REVIEW_HIGH_RISK = 'dietary_claims.review_high_risk';
+
+    public const DIETARY_CLAIMS_SUSPEND = 'dietary_claims.suspend';
+
+    public const DIETARY_CLAIMS_VIEW_AUDIT = 'dietary_claims.view_audit';
+
+    public const REVISIONS_VIEW_HISTORY = 'recipes.revisions.view_history';
+
+    /** Restores an earlier published revision as a new revision. Administrators only at first. */
+    public const REVISIONS_ROLLBACK = 'recipes.revisions.rollback';
+
+    /** @var list<string> */
+    public const REVISION_PERMISSIONS = [
+        self::REVISIONS_VIEW_HISTORY,
+        self::REVISIONS_ROLLBACK,
+    ];
+
+    /** @var list<string> */
+    public const DIETARY_CLAIM_PERMISSIONS = [
+        self::DIETARY_CLAIMS_VIEW,
+        self::DIETARY_CLAIMS_SUGGEST,
+        self::DIETARY_CLAIMS_FLAG,
+        self::DIETARY_CLAIMS_REVIEW,
+        self::DIETARY_CLAIMS_REVIEW_HIGH_RISK,
+        self::DIETARY_CLAIMS_SUSPEND,
+        self::DIETARY_CLAIMS_VIEW_AUDIT,
+    ];
+
     /** @var list<string> */
     public const LOOKUP_SUBJECTS = ['Category', 'Tag', 'Ingredient', 'Unit', 'Difficulty', 'ScalingMode'];
 
@@ -110,6 +148,15 @@ final class AppPermissions
             self::ROLES_MANAGE => 'Manage roles and permissions',
             self::PLANNER_USE => 'Use meal planner and shopping lists',
             self::HOUSEHOLDS_CREATE => 'Create households',
+            self::REVISIONS_VIEW_HISTORY => 'View recipe revision history and comparisons',
+            self::REVISIONS_ROLLBACK => 'Roll back a recipe to an earlier published revision',
+            self::DIETARY_CLAIMS_VIEW => 'View dietary claims',
+            self::DIETARY_CLAIMS_SUGGEST => 'Suggest dietary claims',
+            self::DIETARY_CLAIMS_FLAG => 'Flag problems with dietary claims',
+            self::DIETARY_CLAIMS_REVIEW => 'Approve or reject dietary claims',
+            self::DIETARY_CLAIMS_REVIEW_HIGH_RISK => 'Approve or reject gluten-free, allergen and nutrition claims',
+            self::DIETARY_CLAIMS_SUSPEND => 'Suspend dietary claims',
+            self::DIETARY_CLAIMS_VIEW_AUDIT => 'View dietary claim audit history',
         ];
     }
 
@@ -164,6 +211,7 @@ final class AppPermissions
             self::RECIPES_VIEW_SHARED,
             self::RECIPES_PERSONALIZE,
             self::RECIPES_RATE,
+            self::DIETARY_CLAIMS_SUGGEST,
             ...$planner,
         ];
 
@@ -180,6 +228,9 @@ final class AppPermissions
                 'Update:Recipe',
                 ...$contributor,
                 self::RECIPES_REVIEW,
+                self::REVISIONS_VIEW_HISTORY,
+                self::DIETARY_CLAIMS_VIEW,
+                self::DIETARY_CLAIMS_FLAG,
             ],
             self::CONTRIBUTOR => $contributor,
             self::MEMBER => [

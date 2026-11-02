@@ -40,6 +40,15 @@
             @else
                 <label class="font-semibold" for="planner-search">{{ __('planner.search_label') }}</label>
                 <input id="planner-search" class="min-h-11 rounded border border-current/30 px-3" type="search" wire:model.live.debounce.300ms="search" autocomplete="off">
+                @if ($dietaryClaims->isNotEmpty())
+                    <label class="font-semibold" for="planner-dietary-claim">{{ __('planner.dietary_filter') }}</label>
+                    <select id="planner-dietary-claim" class="min-h-11 rounded border border-current/30 px-2" wire:model.live="dietaryClaim">
+                        <option value="">{{ __('planner.any_dietary_classification') }}</option>
+                        @foreach ($dietaryClaims as $claimTag)
+                            <option value="{{ $claimTag->code }}">{{ $claimTag->translate($locale)?->name }}</option>
+                        @endforeach
+                    </select>
+                @endif
                 @if ($results->isNotEmpty())
                     <ul class="flex flex-col gap-1" aria-label="{{ __('planner.results') }}">
                         @foreach ($results as $recipe)
@@ -105,6 +114,9 @@
                                     @else
                                         <span class="italic">{{ __('planner.recipe_unavailable') }}</span>
                                     @endif
+                                    @if ($item['recipe_updated'])
+                                        <span class="text-sm font-semibold" role="status">{{ __('planner.recipe_updated') }}</span>
+                                    @endif
                                     @if ($item['leftover'])
                                         <span class="text-sm font-semibold">{{ $item['consumed'] ? __('planner.batches.eaten') : __('planner.batches.leftover_badge') }}</span>
                                     @endif
@@ -141,6 +153,9 @@
                                             <div class="flex gap-2">
                                                 @if ($item['available'])
                                                     <button class="text-link min-h-11" type="button" wire:click="startEdit({{ $item['id'] }})">{{ __('planner.edit') }}</button>
+                                                @endif
+                                                @if ($item['recipe_updated'])
+                                                    <button class="text-link min-h-11" type="button" wire:click="acknowledgeRecipeUpdate({{ $item['id'] }}, {{ $item['version'] }})">{{ __('planner.recipe_update_acknowledge') }}</button>
                                                 @endif
                                                 @if ($item['leftover'] && $item['available'])
                                                     <button class="text-link min-h-11" type="button" wire:click="consumeLeftover({{ $item['id'] }})">{{ __('planner.batches.mark_eaten') }}</button>

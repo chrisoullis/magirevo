@@ -27,6 +27,7 @@ class MealPlanService
         private RecipeAccessService $recipeAccess,
         private HouseholdAccess $householdAccess,
         private AuditLogger $audit,
+        private DietaryClaimVisibility $dietaryClaims,
     ) {}
 
     /**
@@ -97,6 +98,7 @@ class MealPlanService
             $confirmedSubstitutions = $this->validatedSubstitutionChoices($recipe, $confirmedSubstitutions);
             $entry = $plan->entries()->create([
                 'recipe_id' => $recipe->getKey(),
+                'planned_recipe_revision_id' => $recipe->current_revision_id,
                 'planned_on' => $day->toDateString(),
                 'meal_type' => $meal,
                 'servings' => $servings,
@@ -247,6 +249,33 @@ class MealPlanService
     }
 
     /**
+     * The planner keeps showing the newest approved recipe, but the user decides when to accept a change. Accepting
+     * only re-pins the entry; shopping lists are regenerated separately and explicitly.
+     */
+    public function acknowledgeRecipeUpdate(User $actor, MealPlanEntry $entry, int $expectedVersion): MealPlanEntry
+    {
+        Gate::forUser($actor)->authorize('update', $entry->mealPlan);
+        abort_unless($this->entryRecipeVisibleTo($actor, $entry), 404);
+
+        $updated = MealPlanEntry::query()
+            ->whereKey($entry->getKey())
+            ->where('version', $expectedVersion)
+            ->update([
+                'planned_recipe_revision_id' => Recipe::query()->whereKey($entry->recipe_id)->value('current_revision_id'),
+                'version' => DB::raw('version + 1'),
+                'updated_at' => now(),
+            ]);
+
+        if ($updated === 0) {
+            throw new StaleMealPlanException;
+        }
+
+        $this->audit->record('meal_plan_entry_recipe_update_acknowledged', ['meal_plan_id' => $entry->meal_plan_id, 'entry_id' => $entry->getKey()]);
+
+        return $entry->refresh();
+    }
+
+    /**
      * Removing something already removed succeeds quietly; removing a changed entry is a conflict.
      */
     public function removeEntry(User $actor, MealPlanEntry $entry, int $expectedVersion): void
@@ -307,7 +336,8 @@ class MealPlanService
                 ? $entry->confirmedSubstitutions
                     ->filter(fn (MealPlanEntrySubstitution $confirmation): bool => $confirmation->ingredientSubstitution?->status === 'approved'
                         && ($confirmation->ingredientSubstitution->recipe_id === null
-                            || (int) $confirmation->ingredientSubstitution->recipe_id === (int) $entry->recipe_id)
+                            || ((int) $confirmation->ingredientSubstitution->recipe_id === (int) $entry->recipe_id
+                                && $confirmation->ingredientSubstitution->validated_revision_id === $recipe->current_revision_id))
                         && (int) $confirmation->ingredientSubstitution->ingredient_id
                             === (int) $confirmation->recipeIngredient->ingredient_id
                         && (int) $confirmation->ingredientSubstitution->replacement_ingredient_id
@@ -330,6 +360,7 @@ class MealPlanService
                 'meal' => $entry->meal_type,
                 'servings' => $entry->servings,
                 'available' => $available,
+                'recipe_updated' => $available && $entry->planned_recipe_revision_id !== null && $entry->planned_recipe_revision_id !== $recipe->current_revision_id,
                 'title' => $translation?->title,
                 'url' => $translation ? route('recipes.show', ['locale' => $translation->locale, 'slug' => $translation->slug], false) : null,
                 'notes' => $available ? $entry->notes : null,
@@ -365,8 +396,14 @@ class MealPlanService
      *
      * @return Collection<int, Recipe>
      */
-    public function searchRecipes(User $actor, ?Household $household, string $term, string $locale, int $limit = 8): Collection
-    {
+    public function searchRecipes(
+        User $actor,
+        ?Household $household,
+        string $term,
+        string $locale,
+        int $limit = 8,
+        string $dietaryClaim = '',
+    ): Collection {
         $this->authorizeScope($actor, $household, HouseholdAbility::EditPlans);
 
         $term = trim($term);
@@ -377,13 +414,20 @@ class MealPlanService
 
         $like = '%'.addcslashes($term, '%_\\').'%';
 
-        return Recipe::query()
+        $query = Recipe::query()
             ->whereHas('translations', fn ($q) => $q->where('title', 'ilike', $like))
             ->where(fn ($q) => $q
                 ->where(fn ($published) => $published->published())
                 ->orWhere('author_id', $actor->getKey())
                 ->orWhereHas('shares', fn ($shares) => $shares->active()->where('user_id', $actor->getKey())))
-            ->with(['translations'])
+            ->with(['translations']);
+
+        if ($dietaryClaim !== '') {
+            $claimIndex = $this->dietaryClaims->publicClaimIndex();
+            $query->whereIn('recipes.id', $claimIndex[$dietaryClaim] ?? []);
+        }
+
+        return $query
             ->limit($limit * 4)
             ->get()
             ->filter(fn (Recipe $recipe): bool => $this->recipeAddable($actor, $household, $recipe))

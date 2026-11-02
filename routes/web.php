@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\RecipeController;
+use App\Http\Controllers\RecipeDietaryClaimReportController;
 use App\Http\Controllers\SavedRecipesController;
 use App\Http\Controllers\SaveRecipeController;
 use App\Http\Controllers\SharedWithMeController;
@@ -44,6 +45,9 @@ Route::prefix('{locale}')->middleware(SetLocale::class)->group(function (): void
         Route::view('/households/invitations/{token}', 'households.invitation')->middleware('throttle:20,1')->name('households.invitations.show');
         Route::view('/households/{household}', 'households.show')->whereNumber('household')->name('households.show');
         Route::post('/recipes/{recipe}/save', SaveRecipeController::class)->name('recipes.save');
+        Route::post('/recipes/{slug}/dietary-claims/{claim}/report', [RecipeDietaryClaimReportController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('recipes.dietary-claims.report');
     });
 });
 

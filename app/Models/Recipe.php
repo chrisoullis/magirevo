@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\RecipeStatus;
 use App\Enums\RecipeVisibility;
+use App\Services\RecipeMediaMetadata;
 use App\Services\RecipePublishingService;
 use App\Services\RecipeQuotaService;
 use App\Support\AppPermissions;
@@ -88,6 +89,19 @@ class Recipe extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(RecipeRevision::class)->orderByDesc('revision_number');
+    }
+
+    /**
+     * The approved revision whose content the live recipe tables currently hold.
+     */
+    public function currentRevision(): BelongsTo
+    {
+        return $this->belongsTo(RecipeRevision::class, 'current_revision_id');
     }
 
     public function favoritedBy(): BelongsToMany
@@ -243,6 +257,8 @@ class Recipe extends Model
     public function coverMedia(): ?Media
     {
         $media = $this->relationLoaded('media') ? $this->media : $this->media()->with('translations')->get();
+
+        $media = app(RecipeMediaMetadata::class)->present($this, $media);
 
         return $media->first(fn (Media $item): bool => $item->pivot->role === 'cover') ?? $media->first();
     }

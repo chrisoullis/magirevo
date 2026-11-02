@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Ingredient;
 use App\Models\Recipe;
 use App\Models\Unit;
+use Database\Seeders\Concerns\ProtectsPublishedRecipes;
 use Illuminate\Database\Seeder;
 
 /**
@@ -12,8 +13,14 @@ use Illuminate\Database\Seeder;
  */
 class RecipeContentSeeder extends Seeder
 {
+    use ProtectsPublishedRecipes;
+
     public function run(): void
     {
+        if (! $this->sampleRecipesAllowed()) {
+            return;
+        }
+
         $this->call(IngredientSeeder::class);
 
         $units = Unit::query()->pluck('id', 'code');
@@ -21,7 +28,7 @@ class RecipeContentSeeder extends Seeder
         foreach ($this->recipes() as $slug => $content) {
             $recipe = Recipe::query()->whereTranslation('slug', $slug, 'en')->first();
 
-            if ($recipe === null || $recipe->recipeIngredients()->exists() || $recipe->steps()->exists()) {
+            if ($recipe === null || $this->isLive($recipe) || $recipe->recipeIngredients()->exists() || $recipe->steps()->exists()) {
                 continue;
             }
 

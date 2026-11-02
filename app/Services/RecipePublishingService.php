@@ -10,6 +10,7 @@ use App\Notifications\RecipeApproved;
 use App\Notifications\RecipeRejected;
 use App\Notifications\RecipeSubmittedForReview;
 use App\Support\AppPermissions;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
@@ -22,7 +23,7 @@ class RecipePublishingService
 
     public const MAX_PENDING_SUBMISSIONS = 5;
 
-    public function __construct(private RecipeMediaStorage $media, private RecipeQuotaService $quota, private AuditLogger $audit) {}
+    public function __construct(private RecipeMediaStorage $media, private RecipeQuotaService $quota, private AuditLogger $audit, private RecipeRevisionService $revisions) {}
 
     public function publish(Recipe $recipe): Recipe
     {
@@ -34,6 +35,10 @@ class RecipePublishingService
             $recipe->published_at ??= now();
             $recipe->save();
 
+            $revision = $this->revisions->syncPublishedFromLive($recipe->getKey(), Auth::id());
+            $recipe->refresh();
+
+            app(DietaryClaimService::class)->bindPendingToRevision($recipe, $revision);
             $this->media->syncStorage($recipe);
 
             return $recipe;
@@ -245,6 +250,11 @@ class RecipePublishingService
         return $this->quota->guardTransition($recipe, $leavesPublic, fn (): Recipe => DB::transaction(function () use ($recipe, $to): Recipe {
             $recipe->visibility = $to;
             $recipe->save();
+
+            if ($to === RecipeVisibility::Public) {
+                $this->revisions->syncPublishedFromLive($recipe->getKey(), Auth::id());
+                $recipe->refresh();
+            }
 
             $this->media->syncStorage($recipe);
 

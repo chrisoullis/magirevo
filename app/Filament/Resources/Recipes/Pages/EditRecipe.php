@@ -2,14 +2,18 @@
 
 namespace App\Filament\Resources\Recipes\Pages;
 
+use App\Enums\RecipeRevisionStatus;
 use App\Enums\RecipeVisibility;
+use App\Filament\Resources\RecipeRevisions\RecipeRevisionResource;
 use App\Filament\Resources\Recipes\Actions\ReviewActions;
 use App\Filament\Resources\Recipes\Pages\Concerns\SavesRecipeContent;
 use App\Filament\Resources\Recipes\RecipeResource;
 use App\Models\Media;
 use App\Models\Recipe;
+use App\Models\RecipeRevision;
 use App\Services\RecipeAccessService;
 use App\Services\RecipePublishingService;
+use App\Services\RecipeRevisionService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
@@ -29,6 +33,7 @@ class EditRecipe extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            $this->startRevisionAction(),
             $this->workflowAction('submitForReview', 'Submit for review', 'warning', ['draft', 'published'], fn (RecipePublishingService $service, Recipe $recipe) => $service->submit(auth()->user(), $recipe), 'English and Greek content, ingredients, steps and a cover image are required. You cannot edit the recipe while it is in review.'),
             ReviewActions::approve(),
             ReviewActions::reject(),
@@ -42,6 +47,44 @@ class EditRecipe extends EditRecord
             DeleteAction::make(),
             RestoreAction::make(),
         ];
+    }
+
+    private function isLiveRecipe(): bool
+    {
+        return app(RecipeRevisionService::class)->isLive($this->getRecord());
+    }
+
+    /**
+     * Public recipes are only changed through revisions, so this opens (or continues) the revision draft instead.
+     */
+    private function startRevisionAction(): Action
+    {
+        return Action::make('startRevision')
+            ->label(fn (): string => app(RecipeRevisionService::class)->openRevision($this->getRecord()) ? 'Continue revision' : 'Start revision draft')
+            ->color('primary')
+            ->visible(fn (Recipe $record): bool => app(RecipeRevisionService::class)->isLive($record) && (auth()->user()?->can('createDraft', [RecipeRevision::class, $record]) ?? false))
+            ->action(function (Recipe $record): void {
+                $service = app(RecipeRevisionService::class);
+
+                try {
+                    $revision = $service->openRevision($record) ?? $service->createDraft(auth()->user(), $record);
+                } catch (ValidationException $exception) {
+                    Notification::make()->danger()->title('Revision could not be started')->body(collect($exception->errors())->flatten()->implode("\n"))->send();
+
+                    return;
+                }
+
+                $this->redirect(RecipeRevisionResource::getUrl($revision->status === RecipeRevisionStatus::Draft ? 'edit' : 'view', ['record' => $revision]));
+            });
+    }
+
+    protected function beforeSave(): void
+    {
+        if ($this->isLiveRecipe()) {
+            Notification::make()->danger()->title('This recipe is public')->body('Public recipes are changed through a revision draft, which is reviewed before it replaces the published version.')->persistent()->send();
+
+            $this->halt();
+        }
     }
 
     public function mount(int|string $record): void

@@ -57,8 +57,9 @@ class RecipeContentPresenter
             : $recipe->steps()->with(['translations', 'media.translations'])->get();
 
         return $steps
-            ->map(function ($step) use ($locale): array {
+            ->map(function ($step) use ($locale, $recipe): array {
                 $media = $step->relationLoaded('media') ? $step->media : $step->media()->with('translations')->get();
+                $media = app(RecipeMediaMetadata::class)->present($recipe, $media);
                 $images = $media
                     ->filter(fn (Media $item): bool => $item->pivot->kind === 'image' && $item->media_type === Media::TYPE_IMAGE)
                     ->map(fn (Media $item): array => [

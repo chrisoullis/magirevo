@@ -85,6 +85,17 @@
                     @endforeach
                 </select>
             </label>
+            @if ($dietaryClaims->isNotEmpty())
+                <label>
+                    <span>{{ __('site.cooking_dietary_filter') }}</span>
+                    <select wire:model.live="dietaryClaim">
+                        <option value="">{{ __('site.any_dietary_classification') }}</option>
+                        @foreach ($dietaryClaims as $claimTag)
+                            <option value="{{ $claimTag['code'] }}">{{ $claimTag['name'] }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endif
             <label>
                 <span>{{ __('site.cooking_maximum_time') }}</span>
                 <input type="number" min="1" max="1440" inputmode="numeric" wire:model.live.debounce.300ms="maximumMinutes">
@@ -134,7 +145,7 @@
                 <p>{{ __('site.cooking_no_results_hint') }}</p>
             </div>
         @else
-            <div class="what-cook-result-grid" wire:loading.class="is-loading" wire:target="selectedIngredientIds, onlyComplete, category, difficulty, maximumMinutes">
+            <div class="what-cook-result-grid" wire:loading.class="is-loading" wire:target="selectedIngredientIds, onlyComplete, category, difficulty, maximumMinutes, dietaryClaim">
                 @foreach ($results as $result)
                     @php($recipe = $result['recipe'])
                     <article class="what-cook-result" wire:key="what-cook-recipe-{{ $recipe->getKey() }}">

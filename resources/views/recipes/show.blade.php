@@ -19,6 +19,7 @@
 
 @php
     $cover = $recipe->coverMedia();
+    $dietaryClaims = app(\App\Services\DietaryClaimVisibility::class)->publicClaims($recipe);
     $placeholder = asset('images/recipe-placeholder.svg');
     $introductionHtml = $recipe->introduction ? \Filament\Forms\Components\RichEditor\RichContentRenderer::make($recipe->introduction)->toHtml() : '';
     $showJump = mb_strlen(trim(strip_tags($introductionHtml))) > \App\Services\RecipeContentPresenter::LONG_INTRODUCTION_CHARACTERS;
@@ -34,6 +35,20 @@
                 <h1>{{ $recipe->title }}</h1>
                 <p>{{ $recipe->summary }}</p>
                 <div class="detail-stats"><span>{{ __('site.minutes_total', ['minutes' => $recipe->totalMinutes()]) }}</span>@if ($recipe->difficultyLabel())<span>{{ $recipe->difficultyLabel() }}</span>@endif<span>{{ __('site.serves', ['count' => $baseServings]) }}</span></div>
+                @if ($dietaryClaims->isNotEmpty())
+                    <p class="dietary-claims"><strong>{{ __('site.dietary_information') }}:</strong> {{ $dietaryClaims->map(fn ($claim) => $claim->tag->translate($locale)?->name)->filter()->implode(', ') }}<br><small>{{ __('site.dietary_disclaimer') }}</small></p>
+                    @if (auth()->check())
+                        @foreach ($dietaryClaims as $claim)
+                            <form method="POST" action="{{ route('recipes.dietary-claims.report', ['locale' => $locale, 'slug' => $recipe->slug, 'claim' => $claim->getKey()], false) }}">
+                                @csrf
+                                <label for="dietary-claim-report-{{ $claim->getKey() }}">{{ __('site.dietary_report_label', ['claim' => $claim->tag->translate($locale)?->name]) }}</label>
+                                <textarea id="dietary-claim-report-{{ $claim->getKey() }}" name="notes" required maxlength="1000"></textarea>
+                                <button class="text-link" type="submit">{{ __('site.dietary_report_submit') }}</button>
+                            </form>
+                        @endforeach
+                    @endif
+                @endif
+                @if (session('dietary-report-status'))<p class="status-message" role="status">{{ session('dietary-report-status') }}</p>@endif
                 <div class="recipe-actions">
                     @if ($showJump)
                         <a class="button" href="#recipe-content" data-jump-to-recipe>{{ __('site.jump_to_recipe') }}</a>
@@ -161,9 +176,9 @@
                 @endforeach
             </section>
         @endif
-        @auth
+        @can(\App\Support\AppPermissions::RECIPES_PERSONALIZE)
             @livewire('personal-recipe-notes', ['recipeId' => $recipe->id, 'locale' => $locale], key('recipe-notes-'.$recipe->id))
-        @endauth
+        @endcan
         @if ($isPublic)
             @livewire('recipe-ratings', ['recipeId' => $recipe->id, 'locale' => $locale], key('recipe-ratings-'.$recipe->id))
         @endif

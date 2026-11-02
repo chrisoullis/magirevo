@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Ingredient extends Model
 {
@@ -43,6 +44,26 @@ class Ingredient extends Model
     public function recipeIngredients(): HasMany
     {
         return $this->hasMany(RecipeIngredient::class);
+    }
+
+    public function dietaryProfile(): HasOne
+    {
+        return $this->hasOne(IngredientDietaryProfile::class);
+    }
+
+    public function dietaryAssessments(): HasMany
+    {
+        return $this->hasMany(IngredientDietaryAssessment::class);
+    }
+
+    public function components(): HasMany
+    {
+        return $this->hasMany(IngredientComponent::class);
+    }
+
+    public function allergenAssessments(): HasMany
+    {
+        return $this->hasMany(IngredientAllergenAssessment::class);
     }
 
     public function substitutions(): HasMany

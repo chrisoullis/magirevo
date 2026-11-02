@@ -16,7 +16,7 @@ class MealPlanEntry extends Model
 
     protected $attributes = ['version' => 1];
 
-    protected $fillable = ['meal_plan_id', 'recipe_id', 'planned_on', 'meal_type', 'servings', 'notes', 'added_by', 'batch_cook_id', 'consumed_at', 'version'];
+    protected $fillable = ['meal_plan_id', 'recipe_id', 'planned_on', 'meal_type', 'servings', 'notes', 'added_by', 'batch_cook_id', 'consumed_at', 'version', 'planned_recipe_revision_id'];
 
     protected function casts(): array
     {

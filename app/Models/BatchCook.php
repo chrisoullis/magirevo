@@ -16,6 +16,7 @@ class BatchCook extends Model
     protected $attributes = ['version' => 1, 'reserved_portions' => 0, 'consumed_portions' => 0];
 
     protected $fillable = [
+        'recipe_revision_id',
         'household_id', 'created_by', 'recipe_id', 'source_entry_id', 'cooked_on', 'prepared_portions',
         'reserved_portions', 'consumed_portions', 'notes', 'version',
     ];

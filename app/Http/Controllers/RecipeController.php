@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Media;
 use App\Models\Recipe;
+use App\Services\DietaryClaimVisibility;
 use App\Services\RecipeAccessService;
 use App\Services\RecipeContentPresenter;
+use App\Services\RecipeMediaMetadata;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -54,7 +56,7 @@ class RecipeController extends Controller
             'related' => $related,
             'steps' => $presenter->steps($recipe, $locale),
             'baseServings' => $presenter->baseServings($recipe),
-            'gallery' => $recipe->media
+            'gallery' => app(RecipeMediaMetadata::class)->present($recipe, $recipe->media)
                 ->filter(fn (Media $media): bool => $media->pivot->role === 'gallery' && $media->media_type === Media::TYPE_IMAGE)
                 ->values(),
             'alternateUrls' => $alternateUrls,
@@ -136,7 +138,7 @@ class RecipeController extends Controller
         $category,
         array $ratingSummary,
     ): array {
-        $images = $recipe->media
+        $images = app(RecipeMediaMetadata::class)->present($recipe, $recipe->media)
             ->filter(fn (Media $media): bool => $media->media_type === Media::TYPE_IMAGE)
             ->toBase()
             ->map(fn ($media): string => $media->publicUrl())
@@ -162,7 +164,7 @@ class RecipeController extends Controller
             'totalTime' => 'PT'.($recipe->prep_minutes + $recipe->cook_minutes + $recipe->rest_minutes).'M',
             'recipeYield' => (string) $presenter->baseServings($recipe),
             'recipeCategory' => $recipe->categoryLabel(),
-            'keywords' => $recipe->tags->map(fn ($tag) => $tag->translate($locale)?->name)->filter()->implode(', ') ?: null,
+            'keywords' => app(DietaryClaimVisibility::class)->publicTags($recipe)->map(fn ($tag) => $tag->translate($locale)?->name)->filter()->implode(', ') ?: null,
             'recipeIngredient' => $presenter->plainIngredients($recipe),
             'recipeInstructions' => collect($presenter->steps($recipe, $locale))
                 ->map(fn (array $step): array => array_filter([

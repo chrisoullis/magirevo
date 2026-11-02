@@ -104,7 +104,16 @@ class Media extends Model
     {
         return $this->recipes()->exists()
             || $this->recipeSteps()->exists()
-            || $this->categories()->exists();
+            || $this->categories()->exists()
+            || $this->isRetainedByRevision();
+    }
+
+    /**
+     * Media shown by any retained recipe revision, current or historical, must stay available.
+     */
+    public function isRetainedByRevision(): bool
+    {
+        return RecipeRevisionMedia::query()->where('media_id', $this->getKey())->exists();
     }
 
     public function recipes(): BelongsToMany

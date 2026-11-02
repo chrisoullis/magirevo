@@ -2,6 +2,18 @@
 
 namespace App\Providers;
 
+use App\Models\IngredientAllergenAssessment;
+use App\Models\IngredientComponent;
+use App\Models\IngredientDietaryAssessment;
+use App\Models\IngredientDietaryProfile;
+use App\Models\IngredientSubstitution;
+use App\Models\Recipe;
+use App\Models\RecipeIngredient;
+use App\Models\RecipeIngredientTranslation;
+use App\Models\RecipeStep;
+use App\Models\RecipeStepTranslation;
+use App\Observers\DietaryRevalidationObserver;
+use App\Observers\IngredientDietaryMetadataObserver;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,6 +32,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        foreach ([Recipe::class, RecipeIngredient::class, RecipeStep::class, RecipeIngredientTranslation::class, RecipeStepTranslation::class, IngredientSubstitution::class] as $model) {
+            $model::observe(DietaryRevalidationObserver::class);
+        }
+
+        foreach ([IngredientComponent::class, IngredientDietaryProfile::class, IngredientDietaryAssessment::class, IngredientAllergenAssessment::class] as $model) {
+            $model::observe(IngredientDietaryMetadataObserver::class);
+        }
+
         if (app()->environment('local')) {
             Vite::createAssetPathsUsing(fn (string $path): string => '/'.ltrim($path, '/'));
         }
