@@ -7,6 +7,9 @@ use App\Enums\RecipeVisibility;
 use App\Models\Recipe;
 use App\Models\User;
 use App\Services\RecipeAccessService;
+use App\Services\RecipeQuotaService;
+use App\Services\Recipes\RecipeVariationPublishingService;
+use App\Services\Recipes\RecipeVariationRights;
 use App\Support\AppPermissions;
 
 /**
@@ -38,6 +41,42 @@ class RecipePolicy
         return $this->access->canView($user, $recipe);
     }
 
+    public function fork(User $user, Recipe $recipe): bool
+    {
+        return config('recipe-variations.enabled', false)
+            && $this->verified($user)
+            && $user->can(AppPermissions::RECIPES_FORK)
+            && $this->access->canView($user, $recipe)
+            && $recipe->isPubliclyAccessible()
+            && $recipe->derived_from_recipe_id === null
+            && $recipe->current_revision_id !== null
+            && app(RecipeVariationRights::class)->permitsPrivate($recipe)
+            && ! app(RecipeQuotaService::class)->hasReachedLimit($user);
+    }
+
+    public function editVariation(User $user, Recipe $recipe): bool
+    {
+        return config('recipe-variations.enabled', false)
+            && $this->verified($user)
+            && $user->can(AppPermissions::RECIPES_FORK)
+            && $this->access->owns($user, $recipe)
+            && ! $recipe->trashed()
+            && $recipe->derived_from_recipe_id !== null
+            && $recipe->derivation()->exists()
+            && $recipe->status === RecipeStatus::Draft->value
+            && $recipe->visibility === RecipeVisibility::Private
+            && $recipe->published_at === null
+            && $recipe->current_revision_id === null;
+    }
+
+    public function submitVariation(User $user, Recipe $recipe): bool
+    {
+        return config('recipe-variations.public_submissions_enabled', false)
+            && $this->editVariation($user, $recipe)
+            && app(RecipeVariationPublishingService::class)->eligible($user)
+            && app(RecipeVariationPublishingService::class)->publicRights($recipe);
+    }
+
     public function create(User $user): bool
     {
         return $this->verified($user)
@@ -51,6 +90,14 @@ class RecipePolicy
     public function update(User $user, Recipe $recipe): bool
     {
         if (! $this->verified($user)) {
+            return false;
+        }
+
+        if ($this->editVariation($user, $recipe)) {
+            return true;
+        }
+
+        if ($recipe->derived_from_recipe_id !== null && $recipe->status === RecipeStatus::Pending->value) {
             return false;
         }
 
@@ -105,7 +152,8 @@ class RecipePolicy
 
     public function submitForReview(User $user, Recipe $recipe): bool
     {
-        return $this->verified($user)
+        return $recipe->derived_from_recipe_id === null
+            && $this->verified($user)
             && $user->can(AppPermissions::RECIPES_SUBMIT)
             && ! $recipe->trashed()
             && $this->submittable($recipe)
@@ -129,7 +177,7 @@ class RecipePolicy
         return $this->verified($user)
             && ! $recipe->trashed()
             && in_array($recipe->status, [RecipeStatus::Pending->value, RecipeStatus::Published->value], true)
-            && $this->ownsWith($user, $recipe, AppPermissions::RECIPES_UPDATE_OWNED);
+            && ($this->ownsWith($user, $recipe, AppPermissions::RECIPES_UPDATE_OWNED) || ($recipe->derived_from_recipe_id !== null && $recipe->author_id === $user->id && $user->can(AppPermissions::RECIPES_FORK)));
     }
 
     /**
@@ -147,7 +195,8 @@ class RecipePolicy
 
     private function canReview(User $user, Recipe $recipe): bool
     {
-        return $this->verified($user)
+        return $recipe->derived_from_recipe_id === null
+            && $this->verified($user)
             && $user->can(AppPermissions::RECIPES_REVIEW)
             && ! $recipe->trashed()
             && $recipe->status === RecipeStatus::Pending->value
@@ -156,7 +205,8 @@ class RecipePolicy
 
     public function publish(User $user, Recipe $recipe): bool
     {
-        return $this->verified($user)
+        return $recipe->derived_from_recipe_id === null
+            && $this->verified($user)
             && $user->can(AppPermissions::RECIPES_PUBLISH)
             && $this->access->canManage($user, $recipe);
     }
@@ -175,6 +225,10 @@ class RecipePolicy
             return false;
         }
 
+        if ($recipe->derived_from_recipe_id !== null && $to !== RecipeVisibility::Private) {
+            return false;
+        }
+
         if ($to === RecipeVisibility::Public) {
             return $this->publish($user, $recipe);
         }
@@ -189,7 +243,8 @@ class RecipePolicy
 
     public function share(User $user, Recipe $recipe): bool
     {
-        return $this->verified($user)
+        return $recipe->derived_from_recipe_id === null
+            && $this->verified($user)
             && ! $recipe->trashed()
             && $this->ownsWith($user, $recipe, AppPermissions::RECIPES_SHARE);
     }

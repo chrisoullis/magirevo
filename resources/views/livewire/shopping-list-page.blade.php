@@ -36,6 +36,9 @@
                             @if ($item['manual'])<span class="text-sm">{{ __('planner.shopping.manual') }}</span>@endif
                             @if ($item['stale'])<span class="text-sm">{{ __('planner.shopping.no_longer_needed') }}</span>@endif
                         </label>
+                        @if ($item['ingredient_url'])
+                            <a class="ingredient-reference min-h-11 inline-flex items-center" href="{{ $item['ingredient_url'] }}">{{ __('ingredients.about_named', ['name' => $item['name']]) }}</a>
+                        @endif
                         @if ($item['extra'])
                             <p class="w-full text-sm font-semibold" role="status">{{ __('planner.shopping.still_to_buy', ['amount' => $item['extra']]) }}</p>
                         @endif

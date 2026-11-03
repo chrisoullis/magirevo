@@ -8,6 +8,7 @@ use App\Models\RecipeRevision;
 use App\Models\User;
 use App\Services\RecipeAccessService;
 use App\Services\RecipeRevisionService;
+use App\Services\Recipes\RecipeVariationPublishingService;
 use App\Support\AppPermissions;
 
 /**
@@ -68,7 +69,8 @@ class RecipeRevisionPolicy
 
     public function submit(User $user, RecipeRevision $revision): bool
     {
-        return $this->edit($user, $revision) && $user->can(AppPermissions::RECIPES_SUBMIT);
+        return $this->edit($user, $revision) && $user->can(AppPermissions::RECIPES_SUBMIT)
+            && ($revision->recipe->derived_from_recipe_id === null || (config('recipe-variations.public_submissions_enabled', false) && app(RecipeVariationPublishingService::class)->eligible($user) && app(RecipeVariationPublishingService::class)->publicRights($revision->recipe)));
     }
 
     public function discard(User $user, RecipeRevision $revision): bool
@@ -76,9 +78,22 @@ class RecipeRevisionPolicy
         return $this->edit($user, $revision);
     }
 
+    public function reviewVariationRights(User $user, RecipeRevision $revision): bool
+    {
+        return config('recipe-variations.public_submissions_enabled', false)
+            && $revision->status === RecipeRevisionStatus::InReview
+            && $revision->publication_context !== null
+            && ! $revision->recipe->trashed()
+            && $this->verified($user) && $user->hasRole(AppPermissions::ADMIN)
+            && $user->can(AppPermissions::VARIATIONS_MANAGE_RIGHTS)
+            && ! $this->access->owns($user, $revision->recipe)
+            && ! $this->revisions->isInvolved($revision, $user);
+    }
+
     public function approve(User $user, RecipeRevision $revision): bool
     {
-        return $revision->status === RecipeRevisionStatus::InReview
+        return ($revision->recipe->derived_from_recipe_id === null || (config('recipe-variations.public_submissions_enabled', false) && $revision->publication_context !== null && $user->can(AppPermissions::VARIATIONS_REVIEW)))
+            && $revision->status === RecipeRevisionStatus::InReview
             && $this->verified($user)
             && $user->can(AppPermissions::RECIPES_REVIEW)
             && ! $revision->recipe->trashed()

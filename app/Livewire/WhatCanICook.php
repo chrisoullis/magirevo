@@ -42,6 +42,8 @@ class WhatCanICook extends Component
 
     public bool $onlyComplete = false;
 
+    public bool $includeMyVariations = false;
+
     public string $category = '';
 
     public string $difficulty = '';
@@ -54,6 +56,11 @@ class WhatCanICook extends Component
     {
         $this->locale = $locale;
         $this->guardLocale();
+        $code = request()->query('ingredient');
+        if (is_string($code) && mb_strlen($code) <= 100) {
+            $ingredient = $this->availableIngredientsQuery()->where('code', $code)->first();
+            $this->selectedIngredientIds = $ingredient ? [(int) $ingredient->getKey()] : [];
+        }
     }
 
     public function updatedIngredientSearch(): void
@@ -74,7 +81,7 @@ class WhatCanICook extends Component
     public function selectIngredient(int $ingredientId): void
     {
         $this->guardLocale();
-        $ingredient = $this->publicIngredientsQuery()->findOrFail($ingredientId);
+        $ingredient = $this->availableIngredientsQuery()->findOrFail($ingredientId);
         $selectedIds = $this->selectedIngredients()
             ->map(fn (Ingredient $selectedIngredient): int => (int) $selectedIngredient->getKey())
             ->all();
@@ -103,7 +110,7 @@ class WhatCanICook extends Component
 
     public function clearFilters(): void
     {
-        $this->reset('onlyComplete', 'category', 'difficulty', 'maximumMinutes', 'dietaryClaim');
+        $this->reset('includeMyVariations', 'onlyComplete', 'category', 'difficulty', 'maximumMinutes', 'dietaryClaim');
         $this->resetErrorBag();
     }
 
@@ -114,7 +121,7 @@ class WhatCanICook extends Component
         MealPlanService $plans,
     ): void {
         $this->guardLocale();
-        $recipe = Recipe::query()->published()->whereKey($recipeId)->firstOrFail();
+        $recipe = $this->availableRecipes()->whereKey($recipeId)->firstOrFail();
         $selectedIngredientIds = $this->selectedIngredients()
             ->map(fn (Ingredient $ingredient): int => (int) $ingredient->getKey())
             ->all();
@@ -181,7 +188,7 @@ class WhatCanICook extends Component
             ->all();
         abort_if($selectedIngredientIds === [], 404);
 
-        $recipe = Recipe::query()->published()->whereKey($recipeId)->firstOrFail();
+        $recipe = $this->availableRecipes()->whereKey($recipeId)->firstOrFail();
         $confirmedSubstitutions = $this->confirmedForRecipe($recipe, $plans);
         $plan = $plans->findPlan($user, null, MealPlan::weekStartFor(now()));
 
@@ -250,7 +257,7 @@ class WhatCanICook extends Component
         $user = $this->currentUser();
         abort_unless($user !== null && $access->canUsePlanner($user), 403);
 
-        $recipe = Recipe::query()->published()->whereKey($recipeId)->firstOrFail();
+        $recipe = $this->availableRecipes()->whereKey($recipeId)->firstOrFail();
         $confirmedSubstitutions = $this->confirmedForRecipe($recipe, $plans);
         $plan = $plans->ensurePlan($user, null, MealPlan::weekStartFor(now()));
         $entry = $plans->addEntry(
@@ -311,6 +318,7 @@ class WhatCanICook extends Component
             : null;
 
         return view('livewire.what-can-i-cook', [
+            'canIncludeMyVariations' => config('recipe-variations.enabled') && ($this->currentUser()?->hasVerifiedEmail() ?? false),
             'ingredientOptions' => $this->ingredientOptions($selectedIngredientIds),
             'selectedIngredients' => $selectedIngredients,
             'categories' => $this->categoryOptions(),
@@ -348,26 +356,40 @@ class WhatCanICook extends Component
             return collect();
         }
 
-        return $this->publicIngredientsQuery()
+        return $this->availableIngredientsQuery()
             ->whereIn('id', $ids)
-            ->with('translations')
+            ->with(['translations', 'catalogGroup.translations'])
             ->orderBy('id')
             ->get();
     }
 
-    private function publicIngredientsQuery(): Builder
+    private function availableRecipes(?Builder $query = null): Builder
+    {
+        return ($query ?? Recipe::query())->where(function (Builder $recipes): void {
+            $recipes->where(fn (Builder $public): Builder => $public->published());
+            $user = $this->currentUser();
+
+            if ($this->includeMyVariations && config('recipe-variations.enabled') && $user?->hasVerifiedEmail()) {
+                $recipes->orWhere(fn (Builder $owned): Builder => $owned
+                    ->where('recipes.author_id', $user->getKey())
+                    ->where('recipes.visibility', 'private')
+                    ->whereNotNull('recipes.derived_from_recipe_id'));
+            }
+        });
+    }
+
+    private function availableIngredientsQuery(): Builder
     {
         return Ingredient::query()
             ->where('is_active', true)
             ->where(fn (Builder $ingredients): Builder => $ingredients
-                ->whereHas('recipeIngredients.recipe', fn (Builder $recipes): Builder => $recipes->published())
+                ->whereHas('recipeIngredients.recipe', fn (Builder $recipes): Builder => $this->availableRecipes($recipes))
                 ->orWhereHas('substitutionSuggestions', fn (Builder $substitutions): Builder => $substitutions
                     ->approved()
-                    ->whereHas('ingredient.recipeIngredients.recipe', fn (Builder $recipes): Builder => $recipes->published())
+                    ->whereHas('ingredient.recipeIngredients.recipe', fn (Builder $recipes): Builder => $this->availableRecipes($recipes))
                     ->where(fn (Builder $applicable): Builder => $applicable
                         ->whereNull('ingredient_substitutions.recipe_id')
-                        ->orWhereHas('recipe', fn (Builder $recipes): Builder => $recipes
-                            ->published()
+                        ->orWhereHas('recipe', fn (Builder $recipes): Builder => $this->availableRecipes($recipes)
                             ->whereHas('recipeIngredients', fn (Builder $lines): Builder => $lines
                                 ->whereColumn('recipe_ingredients.ingredient_id', 'ingredient_substitutions.ingredient_id'))))));
     }
@@ -384,16 +406,9 @@ class WhatCanICook extends Component
             return collect();
         }
 
-        $pattern = '%'.addcslashes(mb_substr($search, 0, 100), '%_\\').'%';
-
-        return $this->publicIngredientsQuery()
+        return $this->availableIngredientsQuery()
             ->whereNotIn('id', $selectedIngredientIds)
-            ->where(fn (Builder $query): Builder => $query
-                ->where('code', 'ilike', $pattern)
-                ->orWhereHas('translations', fn (Builder $translations): Builder => $translations
-                    ->where(fn (Builder $names): Builder => $names
-                        ->where('name', 'ilike', $pattern)
-                        ->orWhere('plural_name', 'ilike', $pattern))))
+            ->searchCatalogue($search)
             ->with('translations')
             ->orderBy('code')
             ->limit(12)
@@ -408,7 +423,7 @@ class WhatCanICook extends Component
     {
         return Category::query()
             ->publiclyVisible()
-            ->whereHas('recipes', fn (Builder $recipes): Builder => $recipes->published())
+            ->whereHas('recipes', fn (Builder $recipes): Builder => $this->availableRecipes($recipes))
             ->with('translations')
             ->orderBy('sort_order')
             ->orderBy('id')
@@ -424,7 +439,7 @@ class WhatCanICook extends Component
     {
         return Difficulty::query()
             ->where('is_active', true)
-            ->whereIn('code', Recipe::query()->published()->whereNotNull('difficulty')->select('difficulty')->distinct())
+            ->whereIn('code', $this->availableRecipes()->whereNotNull('difficulty')->select('difficulty')->distinct())
             ->with('translations')
             ->orderBy('sort_order')
             ->get()
@@ -466,7 +481,7 @@ class WhatCanICook extends Component
             ->select('recipe_id')
             ->selectRaw('COUNT(DISTINCT ingredient_id) AS required_count')
             ->where('is_optional', false)
-            ->whereHas('recipe', fn (Builder $recipes): Builder => $recipes->published())
+            ->whereHas('recipe', fn (Builder $recipes): Builder => $this->availableRecipes($recipes))
             ->groupBy('recipe_id');
         $matchedCounts = RecipeIngredient::query()
             ->select('recipe_id')
@@ -485,17 +500,16 @@ class WhatCanICook extends Component
                                 ->orWhereColumn('ingredient_substitutions.recipe_id', 'recipe_ingredients.recipe_id'));
                     });
             })
-            ->whereHas('recipe', fn (Builder $recipes): Builder => $recipes->published())
+            ->whereHas('recipe', fn (Builder $recipes): Builder => $this->availableRecipes($recipes))
             ->groupBy('recipe_id');
         $exactCounts = RecipeIngredient::query()
             ->select('recipe_id')
             ->selectRaw('COUNT(DISTINCT ingredient_id) AS exact_count')
             ->where('is_optional', false)
             ->whereIn('ingredient_id', $selectedIngredientIds)
-            ->whereHas('recipe', fn (Builder $recipes): Builder => $recipes->published())
+            ->whereHas('recipe', fn (Builder $recipes): Builder => $this->availableRecipes($recipes))
             ->groupBy('recipe_id');
-        $query = Recipe::query()
-            ->published()
+        $query = $this->availableRecipes()
             ->leftJoinSub($requiredCounts, 'required_ingredients', 'required_ingredients.recipe_id', '=', 'recipes.id')
             ->leftJoinSub($matchedCounts, 'matched_ingredients', 'matched_ingredients.recipe_id', '=', 'recipes.id')
             ->leftJoinSub($exactCounts, 'exact_ingredients', 'exact_ingredients.recipe_id', '=', 'recipes.id')
@@ -572,7 +586,7 @@ class WhatCanICook extends Component
                 ->whereIn('ingredient_id', $originalIngredientIds)
                 ->whereHas('replacementIngredient', fn (Builder $replacement): Builder => $replacement->where('is_active', true))
                 ->applicableToRecipes($recipes->modelKeys())
-                ->with(['translations', 'replacementIngredient.translations'])
+                ->with(['translations', 'replacementIngredient.translations', 'replacementIngredient.catalogGroup.translations'])
                 ->get()
                 ->groupBy('ingredient_id');
 
@@ -610,6 +624,7 @@ class WhatCanICook extends Component
                             'name' => (string) ($substitution->replacementIngredient->translate($this->locale)?->name
                                 ?? $substitution->replacementIngredient->code),
                             'explanation' => $substitution->translate($this->locale)?->explanation,
+                            'url' => $substitution->replacementIngredient->encyclopediaUrl($this->locale),
                             'selected' => $selected,
                             'confirmed' => $confirmed,
                         ];

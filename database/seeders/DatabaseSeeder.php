@@ -25,11 +25,15 @@ class DatabaseSeeder extends Seeder
         $this->call(UnitSeeder::class);
         $this->call(AdditionalUnitSeeder::class);
         $this->call(CategorySeeder::class);
+        $this->call(RecipeTagSeeder::class);
         $this->call(TagSeeder::class);
         $this->call(DifficultySeeder::class);
         $this->call(ScalingModeSeeder::class);
         $this->call(IngredientSeeder::class);
-        $this->call(RecipeSeeder::class);
-        $this->call(RecipeContentSeeder::class);
+        $this->call(IngredientCatalogSeeder::class);
+        if (! app()->isProduction()) {
+            $this->call(RecipeSeeder::class);
+            $this->call(RecipeContentSeeder::class);
+        }
     }
 }

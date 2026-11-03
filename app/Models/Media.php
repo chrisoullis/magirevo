@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\RecipeMediaStorage;
 use Astrotomic\Translatable\Translatable;
 use Database\Factories\MediaFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -105,7 +106,27 @@ class Media extends Model
         return $this->recipes()->exists()
             || $this->recipeSteps()->exists()
             || $this->categories()->exists()
+            || $this->ingredientImages()->exists()
+            || $this->ingredientThumbnails()->exists()
             || $this->isRetainedByRevision();
+    }
+
+    public function ingredientImages(): HasMany
+    {
+        return $this->hasMany(IngredientMedia::class, 'media_id');
+    }
+
+    public function ingredientThumbnails(): HasMany
+    {
+        return $this->hasMany(IngredientMedia::class, 'thumbnail_media_id');
+    }
+
+    public function scopeIngredientLibrary(Builder $query, bool $thumbnail = false): Builder
+    {
+        return $query->where('source', self::SOURCE_LOCAL)->where('disk', 'local')->where('media_type', self::TYPE_IMAGE)
+            ->where('file_path', 'like', $thumbnail ? 'ingredient-thumbnails/%' : 'ingredient-media/%')
+            ->whereDoesntHave('recipes')->whereDoesntHave('recipeSteps')->whereDoesntHave('categories')
+            ->whereNotIn('id', RecipeRevisionMedia::query()->select('media_id'));
     }
 
     /**

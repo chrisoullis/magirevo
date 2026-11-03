@@ -21,6 +21,17 @@ class MediaController extends Controller
 
         $user = Auth::user();
 
+        $ingredientImages = $media->ingredientImages()->with('ingredient')->get()
+            ->merge($media->ingredientThumbnails()->with('ingredient')->get());
+
+        if (! $media->recipes()->exists() && ! $media->recipeSteps()->exists() && ! $media->isRetainedByRevision()
+            && $ingredientImages->contains(fn ($image): bool => $user?->can('view', $image->ingredient) ?? false)) {
+            return Storage::disk($media->disk)->response((string) $media->file_path, null, [
+                'Cache-Control' => 'private, no-store',
+                'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+            ]);
+        }
+
         $recipes = Recipe::query()->withTrashed()
             ->where(fn ($query) => $query
                 ->whereHas('media', fn ($related) => $related->whereKey($media->getKey()))

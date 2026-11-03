@@ -37,11 +37,14 @@ class RecipeRevision extends Model
         'superseded_at',
     ];
 
+    protected $hidden = ['publication_context', 'publication_context_hash'];
+
     protected function casts(): array
     {
         return [
             'status' => RecipeRevisionStatus::class,
             'payload' => 'array',
+            'publication_context' => 'array',
             'media_snapshot' => 'array',
             'resolved_ids' => 'array',
             'submitted_at' => 'datetime',

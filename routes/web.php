@@ -6,9 +6,13 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\IngredientController;
+use App\Http\Controllers\IngredientImageController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\RecipeController;
 use App\Http\Controllers\RecipeDietaryClaimReportController;
+use App\Http\Controllers\RecipeRightsEvidenceController;
+use App\Http\Controllers\RecipeVariationController;
 use App\Http\Controllers\SavedRecipesController;
 use App\Http\Controllers\SaveRecipeController;
 use App\Http\Controllers\SharedWithMeController;
@@ -16,19 +20,28 @@ use App\Http\Controllers\SitemapController;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/rights-evidence/{permission}', RecipeRightsEvidenceController::class)
+    ->middleware(['auth', 'verified', 'throttle:20,1'])->whereNumber('permission')->name('recipes.rights-evidence');
+
 Route::redirect('/', '/en');
 Route::get('/media/{media}', [MediaController::class, 'show'])->whereNumber('media')->name('media.show');
+Route::get('/ingredient-images/{image}/{variant}/{version}', [IngredientImageController::class, 'show'])
+    ->whereNumber('image')->where('variant', 'display|thumbnail')->where('version', '[a-f0-9]{32}')->name('ingredients.image');
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::pattern('locale', 'en|el');
 
 Route::prefix('{locale}')->middleware(SetLocale::class)->group(function (): void {
     Route::view('/', 'home')->name('home.localized');
-    Route::view('/what-can-i-cook', 'what-can-i-cook')->name('recipes.what-can-i-cook');
+    Route::get('/ingredients', [IngredientController::class, 'index'])->name('ingredients.index');
+    Route::get('/ingredients/{slug}', [IngredientController::class, 'show'])->name('ingredients.show');
+    Route::view('/what-can-i-cook', 'what-can-i-cook')->middleware('cache.headers:private;no_store')->name('recipes.what-can-i-cook');
     Route::get('/recipes/{slug}', [RecipeController::class, 'show'])->name('recipes.show');
     Route::get('/recipes/{slug}/print', [RecipeController::class, 'print'])->name('recipes.print');
     Route::get('/categories/{slug}', [CategoryController::class, 'show'])->name('categories.show');
 
     Route::middleware(['auth', 'verified'])->group(function (): void {
+        Route::get('/my-recipes', [RecipeVariationController::class, 'index'])->name('recipes.personal');
+        Route::get('/my-recipes/{recipe}/edit', [RecipeVariationController::class, 'edit'])->whereNumber('recipe')->name('recipes.variations.edit');
         Route::get('/shared-with-me', SharedWithMeController::class)->name('recipes.shared');
         Route::view('/recipes/{recipe}/sharing', 'recipes.sharing')->whereNumber('recipe')->name('recipes.sharing');
         Route::view('/contributor', 'contributor.show')->name('contributor.show');

@@ -36,7 +36,7 @@ class DeletionGuard
         Notification::make()
             ->danger()
             ->title('Cannot delete a record that is in use')
-            ->body('Recipes (or subcategories) still use it. Deactivate it instead, or remove it from those recipes first.')
+            ->body('Other records still use it. Deactivate it instead, or remove those references first.')
             ->send();
 
         $action->cancel();

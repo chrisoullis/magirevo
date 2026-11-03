@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Ingredients;
 use App\Filament\Resources\Ingredients\Pages\CreateIngredient;
 use App\Filament\Resources\Ingredients\Pages\EditIngredient;
 use App\Filament\Resources\Ingredients\Pages\ListIngredients;
+use App\Filament\Resources\Ingredients\RelationManagers\ImagesRelationManager;
 use App\Filament\Resources\Ingredients\Schemas\IngredientForm;
 use App\Filament\Resources\Ingredients\Tables\IngredientsTable;
 use App\Models\Ingredient;
@@ -28,7 +29,7 @@ class IngredientResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['translations', 'defaultUnit.translations']);
+        return parent::getEloquentQuery()->with(['translations', 'defaultUnit.translations', 'catalogGroup.translations', 'primaryImage.media.translations', 'primaryImage.thumbnail']);
     }
 
     public static function form(Schema $schema): Schema
@@ -44,7 +45,7 @@ class IngredientResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            ImagesRelationManager::class,
         ];
     }
 

@@ -317,10 +317,14 @@ class MealPlanService
             ->with([
                 'recipe.translations',
                 'recipe.media.translations',
+                'recipe.recipeIngredients.ingredient.translations',
+                'recipe.recipeIngredients.ingredient.catalogGroup.translations',
                 'confirmedSubstitutions.ingredientSubstitution.translations',
                 'confirmedSubstitutions.ingredientSubstitution.replacementIngredient.translations',
                 'confirmedSubstitutions.recipeIngredient.ingredient.translations',
+                'confirmedSubstitutions.recipeIngredient.ingredient.catalogGroup.translations',
                 'confirmedSubstitutions.replacementIngredient.translations',
+                'confirmedSubstitutions.replacementIngredient.catalogGroup.translations',
             ])
             ->orderBy('planned_on')
             ->orderBy('id')
@@ -348,6 +352,8 @@ class MealPlanService
                         'replacement' => (string) ($confirmation->replacementIngredient->translate($locale)?->name
                             ?? $confirmation->replacementIngredient->code),
                         'explanation' => $confirmation->ingredientSubstitution->translate($locale)?->explanation,
+                        'original_url' => $confirmation->recipeIngredient->ingredient->encyclopediaUrl($locale),
+                        'replacement_url' => $confirmation->replacementIngredient->encyclopediaUrl($locale),
                     ])
                     ->values()
                     ->all()
@@ -365,6 +371,10 @@ class MealPlanService
                 'url' => $translation ? route('recipes.show', ['locale' => $translation->locale, 'slug' => $translation->slug], false) : null,
                 'notes' => $available ? $entry->notes : null,
                 'substitutions' => $confirmedSubstitutions,
+                'ingredients' => $available ? $recipe->recipeIngredients->unique('ingredient_id')->map(fn ($line): array => [
+                    'name' => (string) ($line->ingredient->translate($locale)?->name ?? $line->ingredient->code),
+                    'url' => $line->ingredient->encyclopediaUrl($locale),
+                ])->values()->all() : [],
                 'leftover' => $entry->batch_cook_id !== null,
                 'consumed' => $entry->consumed_at !== null,
                 'has_batch' => $entry->batch_cook_id === null && isset($batchSources[$entry->getKey()]),

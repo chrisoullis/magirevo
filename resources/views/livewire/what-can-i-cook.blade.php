@@ -10,6 +10,13 @@
             @endif
         </div>
 
+        @if ($canIncludeMyVariations)
+            <label class="what-cook-complete-filter">
+                <input type="checkbox" wire:model.live="includeMyVariations">
+                <span>{{ __('variations.include_private_matches') }}</span>
+            </label>
+        @endif
+
         <label class="what-cook-search-field" for="what-cook-ingredient-search">
             <span class="sr-only">{{ __('site.cooking_search_label') }}</span>
             <input
@@ -49,7 +56,7 @@
                 @foreach ($selectedIngredients as $ingredient)
                     @php($ingredientName = (string) ($ingredient->translate($locale)?->name ?? $ingredient->code))
                     <li wire:key="selected-ingredient-{{ $ingredient->getKey() }}">
-                        <span>{{ $ingredientName }}</span>
+                        <x-ingredient-link :name="$ingredientName" :url="$ingredient->encyclopediaUrl($locale)" />
                         <button
                             type="button"
                             aria-label="{{ __('site.cooking_remove_ingredient', ['ingredient' => $ingredientName]) }}"
@@ -154,6 +161,9 @@
                             <span>{{ __('site.cooking_missing_count', ['count' => $result['missingCount']]) }}</span>
                             <strong>{{ __('site.cooking_match_'.(in_array($result['status'], ['possible', 'substitution'], true) ? 'with_substitution' : $result['status'])) }}</strong>
                         </div>
+                        @if (! $recipe->isPubliclyAccessible())
+                            <p>{{ __('variations.private_match') }}</p>
+                        @endif
                         <h3><a href="{{ route('recipes.show', ['locale' => $locale, 'slug' => $recipe->slug], false) }}">{{ $recipe->title }}</a></h3>
                         @if (filled($recipe->summary))
                             <p class="what-cook-result-summary">{{ $recipe->summary }}</p>
@@ -172,7 +182,7 @@
                                     @foreach ($ingredientOption['options'] as $option)
                                         <li wire:key="substitution-option-{{ $recipe->getKey() }}-{{ $ingredientOption['ingredientId'] }}-{{ $option['id'] }}">
                                             <span>
-                                                <strong>{{ $option['name'] }}</strong>
+                                                <strong><x-ingredient-link :name="$option['name']" :url="$option['url']" /></strong>
                                                 @if ($option['explanation'])<span> — {{ $option['explanation'] }}</span>@endif
                                             </span>
                                             @if ($option['confirmed'])

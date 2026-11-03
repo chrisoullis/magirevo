@@ -24,14 +24,16 @@
             @foreach ($group['items'] as $itemIndex => $item)
                 @php($ingredientKey = $groupIndex.'-'.$itemIndex)
                 <li wire:key="ingredient-{{ $ingredientKey }}">
-                    <input type="checkbox" id="ingredient-{{ $recipeId }}-{{ $ingredientKey }}" data-ingredient-key="{{ $ingredientKey }}">
-                    <label for="ingredient-{{ $recipeId }}-{{ $ingredientKey }}">
+                    <input type="checkbox" id="ingredient-{{ $recipeId }}-{{ $ingredientKey }}" data-ingredient-key="{{ $ingredientKey }}" aria-label="{{ $item['name'] }}">
+                    <div class="ingredient-line-copy">
+                        <label class="sr-only" for="ingredient-{{ $recipeId }}-{{ $ingredientKey }}">{{ $item['name'] }}</label>
                         <span class="ingredient-text">
+                            @if ($item['image_url'])<a href="{{ $item['encyclopedia_url'] }}" tabindex="-1" aria-hidden="true"><img class="ingredient-inline-photo" src="{{ $item['image_url'] }}" alt="" width="48" height="48" loading="lazy" decoding="async" onerror="this.hidden=true"></a>@endif
                             @if ($item['quantity'])<strong>{{ $item['quantity'] }}</strong>@endif
-                            {{ $item['name'] }}@if ($item['note']), {{ $item['note'] }}@endif
+                            <x-ingredient-link :name="$item['name']" :url="$item['encyclopedia_url']" />@if ($item['note']), {{ $item['note'] }}@endif
                             @if ($item['optional'])<em>({{ __('site.optional') }})</em>@endif
                         </span>
-                    </label>
+                    </div>
                     @if ($item['substitutions'] !== [])
                         <details class="ingredient-substitution-suggestions">
                             <summary>{{ __('site.ingredient_substitution_suggestions') }}</summary>
@@ -39,7 +41,7 @@
                             <ul>
                                 @foreach ($item['substitutions'] as $substitution)
                                     <li>
-                                        <strong>{{ $substitution['name'] }}</strong>
+                                        <strong><x-ingredient-link :name="$substitution['name']" :url="$substitution['url']" /></strong>
                                         @if ($substitution['explanation'])<span>{{ $substitution['explanation'] }}</span>@endif
                                     </li>
                                 @endforeach
@@ -51,7 +53,7 @@
                             @if ($item['personalChange'])
                                 <p>
                                     <strong>{{ __('site.personal_substitution') }}</strong>
-                                    {{ $item['personalChange']['name'] }}
+                                    <x-ingredient-link :name="$item['personalChange']['name']" :url="$item['personalChange']['url']" />
                                     @if ($item['personalChange']['note'])<span> — {{ $item['personalChange']['note'] }}</span>@endif
                                 </p>
                                 <div class="personal-ingredient-change-actions">

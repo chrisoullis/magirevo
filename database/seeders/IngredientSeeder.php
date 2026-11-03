@@ -11,10 +11,8 @@ class IngredientSeeder extends Seeder
     {
         foreach ($this->ingredients() as $code => [$english, $englishPlural, $greek, $greekPlural]) {
             $ingredient = Ingredient::query()->firstOrCreate(['code' => $code], ['is_active' => true]);
-            $ingredient->fill([
-                'en' => ['name' => $english, 'plural_name' => $englishPlural],
-                'el' => ['name' => $greek, 'plural_name' => $greekPlural],
-            ])->save();
+            $ingredient->translations()->firstOrCreate(['locale' => 'en'], ['name' => $english, 'plural_name' => $englishPlural]);
+            $ingredient->translations()->firstOrCreate(['locale' => 'el'], ['name' => $greek, 'plural_name' => $greekPlural]);
         }
     }
 

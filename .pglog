@@ -1,0 +1,14 @@
+2026-11-01 08:06:22.421 UTC [5] LOG:  starting PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-11-01 08:06:22.421 UTC [5] LOG:  could not create IPv6 socket for address "::1": Operation not permitted
+2026-11-01 08:06:22.421 UTC [5] LOG:  could not create IPv4 socket for address "127.0.0.1": Operation not permitted
+2026-11-01 08:06:22.421 UTC [5] WARNING:  could not create listen socket for "localhost"
+2026-11-01 08:06:22.422 UTC [5] FATAL:  could not create any TCP/IP sockets
+2026-11-01 08:06:22.423 UTC [5] LOG:  database system is shut down
+2026-11-01 08:06:29.881 UTC [5] LOG:  starting PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-11-01 08:06:29.881 UTC [5] FATAL:  could not create lock file "/tmp/.s.PGSQL.5432.lock": Read-only file system
+2026-11-01 08:06:29.882 UTC [5] LOG:  database system is shut down
+2026-11-01 08:06:41.719 UTC [6] LOG:  starting PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-11-01 08:06:41.720 UTC [6] LOG:  could not bind Unix address "/tmp/vscode-agent-codex-sandbox-UkwqM9/pgsocket/.s.PGSQL.5432": Operation not permitted
+2026-11-01 08:06:41.720 UTC [6] WARNING:  could not create Unix-domain socket in directory "/tmp/vscode-agent-codex-sandbox-UkwqM9/pgsocket"
+2026-11-01 08:06:41.720 UTC [6] FATAL:  could not create any Unix-domain sockets
+2026-11-01 08:06:41.722 UTC [6] LOG:  database system is shut down

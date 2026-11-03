@@ -17,6 +17,10 @@ class IngredientTranslation extends Model
         'name',
         'plural_name',
         'description',
+        'slug',
+        'culinary_uses',
+        'preparation_tips',
+        'storage_tips',
     ];
 
     public function ingredient(): BelongsTo

@@ -22,7 +22,7 @@ class RecipeMediaStorage
 
     public function diskFor(Recipe $recipe): string
     {
-        return $recipe->visibility === RecipeVisibility::Public ? self::PUBLIC_DISK : self::PRIVATE_DISK;
+        return $recipe->derived_from_recipe_id === null && $recipe->visibility === RecipeVisibility::Public ? self::PUBLIC_DISK : self::PRIVATE_DISK;
     }
 
     /**
@@ -48,8 +48,8 @@ class RecipeMediaStorage
     private function mustBePublic(Media $media): bool
     {
         return $media->categories()->exists()
-            || $media->recipes()->where('visibility', RecipeVisibility::Public->value)->exists()
-            || $media->recipeSteps()->whereHas('recipe', fn ($recipe) => $recipe->where('visibility', RecipeVisibility::Public->value))->exists();
+            || $media->recipes()->whereNull('derived_from_recipe_id')->where('visibility', RecipeVisibility::Public->value)->exists()
+            || $media->recipeSteps()->whereHas('recipe', fn ($recipe) => $recipe->whereNull('derived_from_recipe_id')->where('visibility', RecipeVisibility::Public->value))->exists();
     }
 
     private function move(Media $media, string $target): void

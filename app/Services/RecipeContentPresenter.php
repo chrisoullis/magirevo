@@ -25,12 +25,12 @@ class RecipeContentPresenter
     /**
      * Ingredient groups ready for display, scaled to the requested servings when given.
      *
-     * @return list<array{name: ?string, items: list<array{recipe_ingredient_id: int, ingredient_id: int, quantity: ?string, name: string, note: ?string, optional: bool}>}>
+     * @return list<array{name: ?string, items: list<array{recipe_ingredient_id: int, ingredient_id: int, encyclopedia_url: ?string, image_url: ?string, quantity: ?string, name: string, note: ?string, optional: bool}>}>
      */
     public function ingredientGroups(Recipe $recipe, ?string $servings = null): array
     {
         $lines = $recipe->recipeIngredients()
-            ->with(['translations', 'ingredient.translations', 'unit.translations', 'ingredientGroup.translations'])
+            ->with(['translations', 'ingredient.translations', 'ingredient.catalogGroup.translations', 'ingredient.publicPrimaryImage.media.translations', 'ingredient.publicPrimaryImage.thumbnail', 'unit.translations', 'ingredientGroup.translations'])
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
@@ -130,7 +130,7 @@ class RecipeContentPresenter
     }
 
     /**
-     * @return array{recipe_ingredient_id: int, ingredient_id: int, quantity: ?string, name: string, note: ?string, optional: bool}
+     * @return array{recipe_ingredient_id: int, ingredient_id: int, encyclopedia_url: ?string, image_url: ?string, quantity: ?string, name: string, note: ?string, optional: bool}
      */
     private function line(Recipe $recipe, RecipeIngredient $line, ?string $servings): array
     {
@@ -164,9 +164,14 @@ class RecipeContentPresenter
             $amount = $translation->quantity_text;
         }
 
+        $encyclopediaUrl = $line->ingredient->encyclopediaUrl(app()->getLocale());
+
         return [
             'recipe_ingredient_id' => (int) $line->getKey(),
             'ingredient_id' => (int) $line->ingredient_id,
+            'encyclopedia_url' => $encyclopediaUrl,
+            'image_url' => $encyclopediaUrl && $line->ingredient->publicPrimaryImage
+                ? $line->ingredient->encyclopediaImageUrl(true) : null,
             'quantity' => $amount,
             'name' => ($isPlural && $unit === null ? $ingredient?->plural_name : null) ?: (string) ($ingredient?->name ?? $line->ingredient->code),
             'note' => filled($translation?->preparation_note) ? $translation->preparation_note : null,

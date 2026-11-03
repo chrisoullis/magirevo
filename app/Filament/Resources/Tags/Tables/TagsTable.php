@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Tags\Tables;
 
+use App\Enums\TagGroup;
 use App\Filament\Support\DeletionGuard;
 use App\Filament\Support\TranslatedColumn;
 use Filament\Actions\BulkActionGroup;
@@ -10,6 +11,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
@@ -22,6 +24,9 @@ class TagsTable
                 TranslatedColumn::make('en'),
                 TranslatedColumn::make('el'),
                 TextColumn::make('code')->searchable()->sortable(),
+                TextColumn::make('group_code')->label(__('tags.group'))
+                    ->formatStateUsing(fn (?string $state): string => TagGroup::tryFrom($state ?? '')?->label() ?? __('tags.other'))
+                    ->sortable(),
                 IconColumn::make('is_active')->boolean()->label('Active')->sortable(),
                 TextColumn::make('sort_order')->sortable(),
                 TextColumn::make('recipes_count')->counts('recipes')->label('Recipes'),
@@ -29,6 +34,7 @@ class TagsTable
             ->defaultSort('sort_order')
             ->filters([
                 TernaryFilter::make('is_active')->label('Active'),
+                SelectFilter::make('group_code')->label(__('tags.group'))->options(TagGroup::options()),
             ])
             ->recordActions([
                 EditAction::make(),

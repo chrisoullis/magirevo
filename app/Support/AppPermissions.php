@@ -22,6 +22,21 @@ final class AppPermissions
     /** @var list<string> */
     public const ROLES = [self::ADMIN, self::EDITOR, self::CONTRIBUTOR, self::MEMBER];
 
+    public const RECIPES_FORK = 'recipes.fork';
+
+    public const VARIATIONS_SUBMIT = 'recipes.variations.submit';
+
+    public const VARIATIONS_REVIEW = 'recipes.variations.review';
+
+    public const VARIATIONS_MANAGE_RIGHTS = 'recipes.variations.manage_rights';
+
+    public const VARIATION_PERMISSIONS = [
+        self::RECIPES_FORK,
+        self::VARIATIONS_SUBMIT,
+        self::VARIATIONS_REVIEW,
+        self::VARIATIONS_MANAGE_RIGHTS,
+    ];
+
     public const RECIPES_CREATE = 'recipes.create';
 
     public const RECIPES_VIEW_OWNED = 'recipes.view_owned';
@@ -100,7 +115,7 @@ final class AppPermissions
     ];
 
     /** @var list<string> */
-    public const LOOKUP_SUBJECTS = ['Category', 'Tag', 'Ingredient', 'Unit', 'Difficulty', 'ScalingMode'];
+    public const LOOKUP_SUBJECTS = ['Category', 'Tag', 'Ingredient', 'IngredientCatalogGroup', 'Unit', 'Difficulty', 'ScalingMode'];
 
     /** @var list<string> */
     public const RESOURCE_ACTIONS = ['ViewAny', 'View', 'Create', 'Update', 'Delete', 'DeleteAny', 'Restore', 'RestoreAny', 'ForceDelete', 'ForceDeleteAny', 'Replicate', 'Reorder'];
@@ -129,6 +144,10 @@ final class AppPermissions
     public static function customLabels(): array
     {
         return [
+            self::RECIPES_FORK => 'Create permitted private recipe variations',
+            self::VARIATIONS_SUBMIT => 'Submit recipe variations for public review',
+            self::VARIATIONS_REVIEW => 'Review recipe variations',
+            self::VARIATIONS_MANAGE_RIGHTS => 'Manage variation rights and private evidence',
             self::RECIPES_CREATE => 'Create personal recipes',
             self::RECIPES_VIEW_OWNED => 'View own recipes',
             self::RECIPES_UPDATE_OWNED => 'Edit own recipes',
@@ -202,6 +221,8 @@ final class AppPermissions
         $planner = [self::PLANNER_USE, self::HOUSEHOLDS_CREATE];
 
         $contributor = [
+            self::RECIPES_FORK,
+            self::VARIATIONS_SUBMIT,
             self::RECIPES_CREATE,
             self::RECIPES_VIEW_OWNED,
             self::RECIPES_UPDATE_OWNED,
@@ -228,12 +249,14 @@ final class AppPermissions
                 'Update:Recipe',
                 ...$contributor,
                 self::RECIPES_REVIEW,
+                self::VARIATIONS_REVIEW,
                 self::REVISIONS_VIEW_HISTORY,
                 self::DIETARY_CLAIMS_VIEW,
                 self::DIETARY_CLAIMS_FLAG,
             ],
             self::CONTRIBUTOR => $contributor,
             self::MEMBER => [
+                self::RECIPES_FORK,
                 self::RECIPES_VIEW_SHARED,
                 self::RECIPES_PERSONALIZE,
                 self::RECIPES_RATE,

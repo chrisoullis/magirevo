@@ -77,7 +77,7 @@ class DietaryClaimVisibility
     public function publicTags(Recipe $recipe): Collection
     {
         $editorial = $recipe->tags
-            ->filter(fn (Tag $tag): bool => $tag->is_active && $tag->classification->isFreelyPublic());
+            ->filter(fn (Tag $tag): bool => $tag->is_active && $tag->isEditorial());
 
         return $editorial
             ->concat($this->publicClaims($recipe)->map(fn (DietaryClaim $claim): Tag => $claim->tag))

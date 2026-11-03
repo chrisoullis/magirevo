@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', ($recipe->seo_title ?: $recipe->title).' | The Sunday Table')
-@section('meta_description', $recipe->seo_description ?: $recipe->summary)
+@section('meta_description', (string) ($recipe->seo_description ?: $recipe->summary))
 @section('og_title', ($recipe->seo_title ?: $recipe->title).' | The Sunday Table')
 @section('og_type', 'article')
 @if ($isPublic)
@@ -49,6 +49,20 @@
                     @endif
                 @endif
                 @if (session('dietary-report-status'))<p class="status-message" role="status">{{ session('dietary-report-status') }}</p>@endif
+                @if ($recipe->derived_from_recipe_id !== null)
+                    @if (auth()->id() === $recipe->author_id && ! $isPublic)
+                        @livewire('variation-publication-status', ['recipeId' => $recipe->id, 'locale' => $locale])
+                    @endif
+                    @include('recipes.partials.variation-attribution', ['attribution' => app(\App\Services\Recipes\RecipeVariationAttribution::class)->present($recipe, auth()->user(), $locale)])
+                    @can('editVariation', $recipe)
+                        <p><a class="button" href="{{ route('recipes.variations.edit', ['locale' => $locale, 'recipe' => $recipe->id], false) }}">{{ __('variations.edit') }}</a></p>
+                    @endcan
+                @endif
+                @if (config('recipe-variations.enabled'))
+                    @can('fork', $recipe)
+                        @livewire('make-recipe-variation', ['recipeId' => $recipe->id, 'locale' => $locale], key('fork-'.$recipe->id))
+                    @endcan
+                @endif
                 <div class="recipe-actions">
                     @if ($showJump)
                         <a class="button" href="#recipe-content" data-jump-to-recipe>{{ __('site.jump_to_recipe') }}</a>
@@ -64,7 +78,7 @@
                             @csrf
                             <button class="button button-dark" type="submit"><span aria-hidden="true">&#9825;</span> {{ auth()->user()->favoriteRecipes()->whereKey($recipe->id)->exists() ? __('site.remove_saved') : __('site.save_recipe') }}</button>
                         </form>
-                    @else
+                    @elseif (! auth()->user()->hasVerifiedEmail())
                         <a class="button button-dark" href="{{ route('verification.notice', [], false) }}">{{ __('site.verify_to_save') }}</a>
                     @endif
                     @can('share', $recipe)

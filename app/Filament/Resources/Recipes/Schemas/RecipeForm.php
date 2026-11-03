@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Recipes\Schemas;
 
+use App\Enums\TagClassification;
 use App\Models\Category;
 use App\Models\Difficulty;
 use App\Models\Ingredient;
@@ -125,9 +126,22 @@ class RecipeForm
                     ->relationship(
                         'tags',
                         'code',
-                        fn (Builder $query) => $query->where('is_active', true)->orderBy('sort_order'),
+                        fn (Builder $query) => $query->where('is_active', true)->editorial()->with('translations')->orderBy('group_code')->orderBy('sort_order'),
                     )
-                    ->getOptionLabelFromRecordUsing(fn (Tag $tag): string => $tag->translate('en')?->name ?? $tag->code)
+                    ->getOptionLabelFromRecordUsing(fn (Tag $tag): string => $tag->groupLabel().' · '.($tag->translate(app()->getLocale())?->name ?? $tag->code))
+                    ->searchable()
+                    ->getSearchResultsUsing(fn (string $search): array => Tag::query()->where('is_active', true)->editorial()
+                        ->where(fn (Builder $query) => $query->where('code', 'ilike', '%'.$search.'%')
+                            ->orWhere('group_code', 'ilike', '%'.$search.'%')
+                            ->orWhereHas('translations', fn (Builder $translation) => $translation->where('name', 'ilike', '%'.$search.'%')))
+                        ->with('translations')->orderBy('group_code')->orderBy('sort_order')->limit(50)->get()
+                        ->mapWithKeys(fn (Tag $tag): array => [$tag->id => $tag->groupLabel().' · '.($tag->translate(app()->getLocale())?->name ?? $tag->code)])->all())
+                    ->helperText(__('tags.claim_notice'))
+                    ->nestedRecursiveRules([
+                        Rule::exists('tags', 'id')->where('is_active', true)
+                            ->whereIn('classification', TagClassification::freelyPublicValues())
+                            ->where(fn ($query) => $query->whereNull('group_code')->orWhere('group_code', '!=', 'dietary_claim')),
+                    ])
                     ->multiple()
                     ->preload(),
                 Select::make('difficulty')

@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Models\UserRecipeIngredientChange;
 use App\Services\RecipeAccessService;
 use App\Services\RecipeContentPresenter;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -173,7 +172,7 @@ class RecipeServings extends Component
                 ->approved()
                 ->applicableToRecipe((int) $recipe->getKey())
                 ->whereIn('ingredient_id', $ingredientIds)
-                ->with(['translations', 'replacementIngredient.translations'])
+                ->with(['translations', 'replacementIngredient.translations', 'replacementIngredient.catalogGroup.translations'])
                 ->get()
                 ->groupBy('ingredient_id');
 
@@ -184,7 +183,7 @@ class RecipeServings extends Component
             ? $user->recipeIngredientChanges()
                 ->where('recipe_id', $recipe->getKey())
                 ->whereIn('recipe_ingredient_id', $recipeIngredientIds)
-                ->with('alternativeIngredient.translations')
+                ->with(['alternativeIngredient.translations', 'alternativeIngredient.catalogGroup.translations'])
                 ->get()
                 ->keyBy('recipe_ingredient_id')
             : collect();
@@ -197,6 +196,7 @@ class RecipeServings extends Component
                         'name' => (string) ($substitution->replacementIngredient->translate($this->locale)?->name
                             ?? $substitution->replacementIngredient->code),
                         'explanation' => $substitution->translate($this->locale)?->explanation,
+                        'url' => $substitution->replacementIngredient->encyclopediaUrl($this->locale),
                     ])
                     ->values()
                     ->all();
@@ -206,6 +206,7 @@ class RecipeServings extends Component
                     'name' => (string) ($change->alternativeIngredient->translate($this->locale)?->name
                         ?? $change->alternativeIngredient->code),
                     'note' => $change->note,
+                    'url' => $change->alternativeIngredient->encyclopediaUrl($this->locale),
                 ];
             }
             unset($item);
@@ -263,10 +264,7 @@ class RecipeServings extends Component
 
         return Ingredient::query()
             ->where('is_active', true)
-            ->when($search !== '', fn (Builder $query): Builder => $query->where(fn (Builder $matches): Builder => $matches
-                ->where('code', 'ilike', '%'.addcslashes($search, '%_\\').'%')
-                ->orWhereHas('translations', fn (Builder $translations): Builder => $translations
-                    ->where('name', 'ilike', '%'.addcslashes($search, '%_\\').'%'))))
+            ->searchCatalogue($search)
             ->with('translations')
             ->orderBy('code')
             ->limit(20)

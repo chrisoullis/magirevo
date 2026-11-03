@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Tags\Schemas;
 
+use App\Enums\TagGroup;
 use App\Filament\Support\TranslationTabs;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -13,6 +14,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Unique;
 
 class TagForm
@@ -28,6 +30,11 @@ class TagForm
                         ->regex('/^[a-z0-9]+(?:-[a-z0-9]+)*$/')
                         ->helperText('Lowercase letters, numbers and hyphens.')
                         ->unique(ignoreRecord: true),
+                    Select::make('group_code')
+                        ->label(__('tags.group'))
+                        ->options(TagGroup::options())
+                        ->rules([Rule::enum(TagGroup::class)])
+                        ->searchable(),
                     Select::make('classification')
                         ->options([
                             'unclassified' => 'Unclassified (hidden from the public)',

@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\TagClassification;
+use App\Enums\TagGroup;
 use Astrotomic\Translatable\Translatable;
 use Database\Factories\TagFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -19,6 +21,7 @@ class Tag extends Model
 
     protected $fillable = [
         'code',
+        'group_code',
         'classification',
         'is_public_enabled',
         'is_active',
@@ -44,6 +47,22 @@ class Tag extends Model
     public function dietaryClaims(): HasMany
     {
         return $this->hasMany(DietaryClaim::class);
+    }
+
+    public function groupLabel(?string $locale = null): string
+    {
+        return TagGroup::tryFrom($this->group_code ?? '')?->label($locale) ?? __('tags.other', [], $locale);
+    }
+
+    public function isEditorial(): bool
+    {
+        return $this->classification->isFreelyPublic() && $this->group_code !== TagGroup::DietaryClaim->value;
+    }
+
+    public function scopeEditorial(Builder $query): Builder
+    {
+        return $query->whereIn('classification', TagClassification::freelyPublicValues())
+            ->where(fn (Builder $group) => $group->whereNull('group_code')->orWhere('group_code', '!=', TagGroup::DietaryClaim->value));
     }
 
     public function isDietaryClaim(): bool

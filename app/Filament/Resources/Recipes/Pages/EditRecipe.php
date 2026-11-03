@@ -11,6 +11,7 @@ use App\Filament\Resources\Recipes\RecipeResource;
 use App\Models\Media;
 use App\Models\Recipe;
 use App\Models\RecipeRevision;
+use App\Models\RecipeRevisionAudit;
 use App\Services\RecipeAccessService;
 use App\Services\RecipePublishingService;
 use App\Services\RecipeRevisionService;
@@ -205,6 +206,9 @@ class EditRecipe extends EditRecord
 
         return DB::transaction(function () use ($record, $data): Model {
             $record->update($data);
+            if ($record->derived_from_recipe_id !== null) {
+                RecipeRevisionAudit::query()->create(['recipe_id' => $record->id, 'actor_id' => auth()->id(), 'action' => 'variation_edited']);
+            }
 
             return $record;
         });

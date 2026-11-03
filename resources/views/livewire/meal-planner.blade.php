@@ -127,7 +127,7 @@
                                             <ul>
                                                 @foreach ($item['substitutions'] as $substitution)
                                                     <li wire:key="entry-{{ $item['id'] }}-substitution-{{ $loop->index }}">
-                                                        {{ $substitution['original'] }} → {{ $substitution['replacement'] }}
+                                                        <x-ingredient-link :name="$substitution['original']" :url="$substitution['original_url']" /> → <x-ingredient-link :name="$substitution['replacement']" :url="$substitution['replacement_url']" />
                                                         @if ($substitution['explanation']) — {{ $substitution['explanation'] }}@endif
                                                     </li>
                                                 @endforeach
@@ -135,6 +135,16 @@
                                         </div>
                                     @endif
 
+                                    @if ($item['ingredients'] !== [])
+                                        <details class="text-sm">
+                                            <summary>{{ __('ingredients.about') }}</summary>
+                                            <ul>
+                                                @foreach ($item['ingredients'] as $ingredient)
+                                                    <li><x-ingredient-link :name="$ingredient['name']" :url="$ingredient['url']" /></li>
+                                                @endforeach
+                                            </ul>
+                                        </details>
+                                    @endif
                                     @if ($canEdit && $item['leftover'] && $item['consumed'])
                                         {{-- Eaten leftovers are history and stay read-only. --}}
                                     @elseif ($canEdit)

@@ -58,7 +58,7 @@
             <nav class="language-switcher" aria-label="{{ __('site.language_label') }}">
                 @foreach (['en' => 'EN', 'el' => 'EL'] as $switchLocale => $label)
                     @php
-                        $localeUrl = $alternateUrls[$switchLocale]
+                        $localeUrl = $languageSwitchUrls[$switchLocale] ?? $alternateUrls[$switchLocale]
                             ?? (request()->routeIs('recipes.saved')
                                 ? route('recipes.saved', ['locale' => $switchLocale], false)
                                 : route('home.localized', ['locale' => $switchLocale], false));
@@ -68,10 +68,14 @@
             </nav>
             <nav class="main-nav" aria-label="{{ __('site.main_nav') }}">
                 <a href="{{ route('home.localized', ['locale' => $currentLocale], false) }}#recipes">{{ __('site.nav_recipes') }}</a>
+                <a href="{{ route('ingredients.index', ['locale' => $currentLocale], false) }}">{{ __('ingredients.nav') }}</a>
                 <a href="{{ route('recipes.what-can-i-cook', ['locale' => $currentLocale], false) }}">{{ __('site.what_can_i_cook') }}</a>
                 @auth
                     @if (auth()->user()->hasVerifiedEmail())
                         <a href="{{ route('recipes.saved', ['locale' => $currentLocale], false) }}">{{ __('site.recipe_box') }}</a>
+                        @if (config('recipe-variations.enabled'))
+                            <a href="{{ route('recipes.personal', ['locale' => $currentLocale], false) }}">{{ __('variations.collection') }}</a>
+                        @endif
                         @can(\App\Support\AppPermissions::RECIPES_VIEW_SHARED)
                             <a href="{{ route('recipes.shared', ['locale' => $currentLocale], false) }}">{{ __('sharing.nav') }}</a>
                         @endcan

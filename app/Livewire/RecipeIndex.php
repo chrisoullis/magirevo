@@ -2,7 +2,6 @@
 
 namespace App\Livewire;
 
-use App\Enums\TagClassification;
 use App\Models\Category;
 use App\Models\Recipe;
 use App\Models\Tag;
@@ -146,7 +145,7 @@ class RecipeIndex extends Component
             return $query->whereRaw('1 = 0');
         }
 
-        if ($tag->classification->isFreelyPublic()) {
+        if ($tag->isEditorial()) {
             return $query->whereHas('tags', fn (Builder $match) => $match->where('tags.code', $this->tag));
         }
 
@@ -171,7 +170,7 @@ class RecipeIndex extends Component
                     ->whereRaw($fold('title')." LIKE {$pattern}", [$like])
                     ->orWhereRaw($fold('summary')." LIKE {$pattern}", [$like])))
                 ->orWhereHas('tags', fn (Builder $tag) => $tag
-                    ->whereIn('classification', TagClassification::freelyPublicValues())
+                    ->editorial()
                     ->whereHas('translations', fn (Builder $translation) => $translation
                         ->where('locale', $locale)->whereRaw($fold('name')." LIKE {$pattern}", [$like])))
                 ->orWhereHas('recipeIngredients.ingredient.translations', fn (Builder $translation) => $translation
@@ -259,13 +258,13 @@ class RecipeIndex extends Component
             ->where('is_active', true)
             ->where(fn (Builder $tags) => $tags
                 ->where(fn (Builder $editorial) => $editorial
-                    ->whereIn('classification', TagClassification::freelyPublicValues())
+                    ->editorial()
                     ->whereHas('recipes', fn (Builder $recipe) => $recipe->published()))
                 ->orWhereIn('code', $claimCodes))
             ->with('translations')
             ->orderBy('sort_order')
             ->get()
-            ->map(fn (Tag $tag): array => ['code' => $tag->code, 'name' => (string) $tag->translate($this->locale)?->name])
+            ->map(fn (Tag $tag): array => ['code' => $tag->code, 'name' => (string) $tag->translate($this->locale)?->name, 'group' => $tag->groupLabel($this->locale), 'is_editorial' => $tag->isEditorial()])
             ->filter(fn (array $tag): bool => $tag['name'] !== '')
             ->values();
     }

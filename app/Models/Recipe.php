@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -89,6 +90,26 @@ class Recipe extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    public function derivedFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'derived_from_recipe_id')->withTrashed();
+    }
+
+    public function variations(): HasMany
+    {
+        return $this->hasMany(self::class, 'derived_from_recipe_id');
+    }
+
+    public function derivation(): HasOne
+    {
+        return $this->hasOne(RecipeDerivation::class);
+    }
+
+    public function reusePermissions(): HasMany
+    {
+        return $this->hasMany(RecipeReusePermission::class);
     }
 
     public function revisions(): HasMany

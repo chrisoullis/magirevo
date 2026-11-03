@@ -246,11 +246,12 @@ class ShoppingListService
         $label = fn (?Unit $unit): ?string => $unit?->translateOrDefault($locale)?->abbreviation;
         $amount = fn (?string $quantity, ?Unit $unit): ?string => $quantity === null ? null : trim($presenter->formatQuantity($quantity, $locale).' '.$label($unit));
 
-        return $list->items()->with(['ingredient.translations', 'unit.translations'])->get()
+        return $list->items()->with(['ingredient.translations', 'ingredient.catalogGroup.translations', 'unit.translations'])->get()
             ->map(fn (ShoppingListItem $item): array => [
                 'id' => $item->getKey(),
                 'version' => $item->version,
                 'name' => $item->custom_name ?? (string) ($item->ingredient?->translateOrDefault($locale)?->name ?? $item->ingredient?->code),
+                'ingredient_url' => $item->custom_name === null ? $item->ingredient?->encyclopediaUrl($locale) : null,
                 'amount' => $amount($item->quantity, $item->unit),
                 'extra' => $item->extra_quantity !== null ? $amount($item->extra_quantity, $item->unit) : null,
                 'checked' => $item->isChecked(),

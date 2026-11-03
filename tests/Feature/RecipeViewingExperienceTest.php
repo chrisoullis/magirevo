@@ -61,6 +61,17 @@ class RecipeViewingExperienceTest extends TestCase
             ->assertSee('Reset ingredients');
     }
 
+    public function test_recipe_without_optional_summary_closes_its_rendering_buffers(): void
+    {
+        $recipe = $this->recipe();
+        $recipe->translate('en')->update(['summary' => null, 'seo_description' => null]);
+        $buffers = ob_get_level();
+
+        $this->get('/en/recipes/'.$recipe->translate('en')->slug)->assertOk()->assertSee('Lemon pasta');
+
+        $this->assertSame($buffers, ob_get_level(), 'Rendering a recipe without a summary must close all of its output buffers.');
+    }
+
     public function test_jump_to_recipe_is_offered_only_for_long_introductions(): void
     {
         $short = $this->recipe('A quick dinner.');

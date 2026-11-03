@@ -8,6 +8,7 @@ use App\Models\Recipe;
 use App\Models\RecipeRevision;
 use App\Models\RecipeRevisionAudit;
 use App\Models\User;
+use App\Services\Recipes\RecipeVariationPublishingService;
 use Closure;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +43,14 @@ class RecipeRevisionService
      */
     public function isInvolved(RecipeRevision $revision, User $user): bool
     {
+        if (in_array((int) $user->id, $revision->publication_context['involved_user_ids'] ?? [], true)) {
+            return true;
+        }
+
         $id = (int) $user->getKey();
+        if ($revision->recipe->derived_from_recipe_id !== null && RecipeRevisionAudit::query()->where('recipe_id', $revision->recipe_id)->whereNull('recipe_revision_id')->where('actor_id', $id)->where('action', 'variation_edited')->exists()) {
+            return true;
+        }
 
         return (int) $revision->created_by === $id
             || (int) $revision->submitted_by === $id
@@ -147,8 +155,12 @@ class RecipeRevisionService
     /**
      * Validates and freezes the draft for editorial review. From here the payload cannot change.
      */
-    public function submit(User $actor, RecipeRevision $revision): RecipeRevision
+    public function submit(User $actor, RecipeRevision $revision, array $declarations = []): RecipeRevision
     {
+        if ($revision->recipe->derived_from_recipe_id !== null) {
+            return app(RecipeVariationPublishingService::class)->submitRevision($actor, $revision, $declarations);
+        }
+
         Gate::forUser($actor)->authorize('submit', $revision);
 
         return DB::transaction(function () use ($actor, $revision): RecipeRevision {
@@ -185,16 +197,25 @@ class RecipeRevisionService
      * Approval publishes: the approved payload is applied to the live recipe in one transaction and rolled back if the
      * resulting live content does not hash to exactly what was reviewed.
      */
-    public function approve(User $reviewer, RecipeRevision $revision, ?string $notes = null): RecipeRevision
+    public function approve(User $reviewer, RecipeRevision $revision, ?string $notes = null, bool $meaningfulChangesConfirmed = false): RecipeRevision
     {
         Gate::forUser($reviewer)->authorize('approve', $revision);
 
-        return DB::transaction(function () use ($reviewer, $revision, $notes): RecipeRevision {
+        return DB::transaction(function () use ($reviewer, $revision, $notes, $meaningfulChangesConfirmed): RecipeRevision {
             $recipeRow = $this->lockRecipe($revision->recipe_id);
             $revision = $this->lockRevision($revision);
             $this->assertStatus($revision, RecipeRevisionStatus::InReview);
-            $this->assertLive($revision->recipe);
-            $this->assertBasedOnCurrent($revision, $recipeRow);
+            $reviewer = User::query()->findOrFail($reviewer->id);
+            Gate::forUser($reviewer)->authorize('approve', $revision);
+            $variation = $revision->recipe->derived_from_recipe_id !== null;
+            $firstPublication = $variation && $revision->base_revision_id === null && $recipeRow->current_revision_id === null;
+            if ($variation) {
+                app(RecipeVariationPublishingService::class)->assertApproval($reviewer, $revision, $notes, $meaningfulChangesConfirmed);
+            }
+            if (! $firstPublication) {
+                $this->assertLive($revision->recipe);
+                $this->assertBasedOnCurrent($revision, $recipeRow);
+            }
             $this->validator->assertSubmittable($this->snapshotter->normalize($revision->payload), $revision->recipe_id);
 
             return $this->publishPayload(
@@ -233,6 +254,8 @@ class RecipeRevisionService
             $this->lockRecipe($revision->recipe_id);
             $revision = $this->lockRevision($revision);
             $this->assertStatus($revision, RecipeRevisionStatus::InReview);
+            $reviewer = User::query()->findOrFail($reviewer->id);
+            Gate::forUser($reviewer)->authorize('reject', $revision);
 
             $revision->update([
                 'status' => RecipeRevisionStatus::Rejected->value,
@@ -241,6 +264,9 @@ class RecipeRevisionService
                 'rejection_reason' => $reason,
             ]);
 
+            if ($revision->publication_context !== null && $revision->base_revision_id === null) {
+                $this->guard->asPublisher($revision->recipe_id, fn () => DB::table('recipes')->where('id', $revision->recipe_id)->update(['status' => 'draft', 'visibility' => 'private', 'reviewed_by' => $reviewer->id, 'reviewed_at' => now(), 'rejection_reason' => $reason]));
+            }
             $this->audit($revision, $reviewer->getKey(), 'rejected', RecipeRevisionStatus::InReview, RecipeRevisionStatus::Rejected, $reason);
 
             return $revision;
@@ -262,6 +288,9 @@ class RecipeRevisionService
 
         return DB::transaction(function () use ($actor, $target, $reason): RecipeRevision {
             $recipeRow = $this->lockRecipe($target->recipe_id);
+            if ($target->recipe->derived_from_recipe_id !== null) {
+                return app(RecipeVariationPublishingService::class)->restoreAsDraft($actor, $target, $reason);
+            }
             $this->assertLive($target->recipe);
 
             $current = RecipeRevision::query()->where('recipe_id', $target->recipe_id)->where('status', RecipeRevisionStatus::Published->value)->first();
@@ -341,7 +370,11 @@ class RecipeRevisionService
             $this->assertMediaSnapshotIntact($revision, $payload);
 
             $revision->update(['resolved_ids' => $resolved]);
-            DB::table('recipes')->where('id', $recipeId)->update(['current_revision_id' => $revision->getKey()]);
+            $updates = ['current_revision_id' => $revision->getKey()];
+            if ($revision->publication_context !== null) {
+                $updates += ['status' => 'published', 'visibility' => 'public', 'published_at' => $revision->recipe->published_at ?? now(), 'reviewed_by' => $actor->id, 'reviewed_at' => now(), 'rejection_reason' => null];
+            }
+            DB::table('recipes')->where('id', $recipeId)->update($updates);
             $this->retainMedia($revision);
             $this->audit($revision, $actor->getKey(), $action, $from, RecipeRevisionStatus::Published, $note, $metadata);
 

@@ -47,7 +47,23 @@
             </label>
         </div>
 
-        <div class="recipe-grid" wire:loading.class="is-loading" wire:target="search, category">
+        @if ($tags->contains('is_editorial', true))
+            <label class="search-field">
+                <span>{{ __('tags.filter', [], $locale) }}</span>
+                <select wire:model.live="tag">
+                    <option value="">{{ __('tags.all', [], $locale) }}</option>
+                    @foreach ($tags->where('is_editorial', true)->groupBy('group') as $group => $groupTags)
+                        <optgroup label="{{ $group }}">
+                            @foreach ($groupTags as $option)
+                                <option value="{{ $option['code'] }}" wire:key="tag-option-{{ $option['code'] }}">{{ $option['name'] }}</option>
+                            @endforeach
+                        </optgroup>
+                    @endforeach
+                </select>
+            </label>
+        @endif
+
+        <div class="recipe-grid" wire:loading.class="is-loading" wire:target="search, category, tag">
             @forelse ($recipes as $recipe)
                 <x-recipe-card :recipe="$recipe" :locale="$locale" wire:key="recipe-{{ $recipe->id }}" />
             @empty

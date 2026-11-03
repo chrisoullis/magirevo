@@ -10,7 +10,7 @@ use RuntimeException;
 
 class RecipeStepImageOptimizer
 {
-    public function optimize(UploadedFile $file): string
+    public function optimize(UploadedFile $file, int $maximumDimension = 1920): string
     {
         $source = $file->getRealPath();
 
@@ -27,7 +27,7 @@ class RecipeStepImageOptimizer
         try {
             ImageManager::usingDriver(Driver::class)
                 ->decodePath($source)
-                ->scaleDown(width: 1920, height: 1920)
+                ->scaleDown(width: $maximumDimension, height: $maximumDimension)
                 ->encode(new WebpEncoder(quality: 82))
                 ->save($temporaryPath);
         } catch (\Throwable $exception) {

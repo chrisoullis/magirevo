@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\RecipeApproved;
 use App\Notifications\RecipeRejected;
 use App\Notifications\RecipeSubmittedForReview;
+use App\Services\Recipes\RecipeVariationPublishingService;
 use App\Support\AppPermissions;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -176,6 +177,10 @@ class RecipePublishingService
      */
     public function withdraw(User $actor, Recipe $recipe): Recipe
     {
+        if ($recipe->derived_from_recipe_id !== null && $recipe->status === 'pending') {
+            return app(RecipeVariationPublishingService::class)->withdraw($actor, $recipe);
+        }
+
         Gate::forUser($actor)->authorize('withdraw', $recipe);
 
         DB::transaction(function () use ($recipe): void {
@@ -233,6 +238,10 @@ class RecipePublishingService
      */
     public function changeVisibility(Recipe $recipe, RecipeVisibility $to): Recipe
     {
+        if ($recipe->derived_from_recipe_id !== null && $to !== RecipeVisibility::Private) {
+            throw ValidationException::withMessages(['visibility' => __('variations.public_disabled')]);
+        }
+
         if ($recipe->visibility === $to) {
             return $recipe;
         }
@@ -299,6 +308,8 @@ class RecipePublishingService
      */
     public function assertPublishable(Recipe $recipe): void
     {
+        $this->assertVariationPublicationDisabled($recipe);
+
         $this->validateTranslatedContent($recipe);
         $this->validateCompleteness($recipe);
     }
@@ -345,12 +356,23 @@ class RecipePublishingService
 
     public function validateForPublishing(Recipe $recipe): void
     {
+        if ($recipe->derived_from_recipe_id !== null && ! $recipe->currentRevision()->where('recipe_id', $recipe->id)->where('status', 'published')->whereNotNull('publication_context')->exists()) {
+            $this->assertVariationPublicationDisabled($recipe);
+        }
+
         $this->validateTranslatedContent($recipe);
 
         if ($recipe->status === 'published' && $recipe->published_at === null) {
             throw ValidationException::withMessages([
                 'published_at' => 'A publication timestamp is required.',
             ]);
+        }
+    }
+
+    private function assertVariationPublicationDisabled(Recipe $recipe): void
+    {
+        if ($recipe->derived_from_recipe_id !== null) {
+            throw ValidationException::withMessages(['variation' => __('variations.public_disabled')]);
         }
     }
 
