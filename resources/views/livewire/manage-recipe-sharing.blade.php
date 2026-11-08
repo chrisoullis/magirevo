@@ -10,6 +10,8 @@
 
     @if (! $isShared)
         <p role="status">{{ __('sharing.not_shared') }}</p>
+        @error('visibility')<p class="field-error" role="alert">{{ $message }}</p>@enderror
+        @error('share')<p class="field-error" role="alert">{{ $message }}</p>@enderror
         <button class="button button-dark auth-submit" type="button" wire:click="enableSharing" wire:loading.attr="disabled">{{ __('sharing.enable') }}</button>
     @else
         <form class="auth-form" wire:submit="share">

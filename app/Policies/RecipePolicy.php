@@ -237,6 +237,12 @@ class RecipePolicy
             return false;
         }
 
+        // Sharing is a distinct permission: an owner allowed to grant named access need not also
+        // have permission to edit recipe content just to switch the visibility to "shared".
+        if ($to === RecipeVisibility::Shared) {
+            return $this->share($user, $recipe);
+        }
+
         return $this->access->canManage($user, $recipe)
             || $this->ownsWith($user, $recipe, AppPermissions::RECIPES_UPDATE_OWNED);
     }
