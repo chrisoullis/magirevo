@@ -1,0 +1,116 @@
+{
+  "results": [
+    {
+      "path": "/en/planner",
+      "width": 390,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    },
+    {
+      "path": "/en/planner/shopping",
+      "width": 390,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": true
+    },
+    {
+      "path": "/en/households/1/planner",
+      "width": 390,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    },
+    {
+      "path": "/en/households/1/planner/shopping",
+      "width": 390,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": true
+    },
+    {
+      "path": "/en/planner",
+      "width": 1440,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    },
+    {
+      "path": "/en/planner/shopping",
+      "width": 1440,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": true
+    },
+    {
+      "path": "/en/households/1/planner",
+      "width": 1440,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    },
+    {
+      "path": "/en/households/1/planner/shopping",
+      "width": 1440,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": true
+    },
+    {
+      "path": "/el/planner",
+      "width": 390,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    },
+    {
+      "path": "/el/planner/shopping",
+      "width": 390,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": true
+    },
+    {
+      "path": "/el/households/1/planner",
+      "width": 390,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    },
+    {
+      "path": "/el/households/1/planner/shopping",
+      "width": 390,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": true
+    },
+    {
+      "path": "/el/planner",
+      "width": 1440,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    },
+    {
+      "path": "/el/planner/shopping",
+      "width": 1440,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": true
+    },
+    {
+      "path": "/el/households/1/planner",
+      "width": 1440,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    },
+    {
+      "path": "/el/households/1/planner/shopping",
+      "width": 1440,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": true
+    }
+  ]
+}

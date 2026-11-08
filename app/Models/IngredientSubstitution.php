@@ -66,6 +66,22 @@ class IngredientSubstitution extends Model
         }
     }
 
+    /** Recipe-specific approval follows the exact resolved revision, not a newer live child recipe. */
+    public function appliesToResolvedSource(array $source): bool
+    {
+        if ($this->recipe_id === null) {
+            return true;
+        }
+        if ((int) $this->recipe_id !== (int) ($source['recipe_id'] ?? 0)) {
+            return false;
+        }
+        if ($this->validated_revision_id !== null) {
+            return (int) $this->validated_revision_id === (int) ($source['recipe_revision_id'] ?? 0);
+        }
+
+        return ($source['recipe_revision_id'] ?? null) === null || ($source['recipe_revision_status'] ?? null) === 'retained';
+    }
+
     public function validatedRevision(): BelongsTo
     {
         return $this->belongsTo(RecipeRevision::class, 'validated_revision_id');

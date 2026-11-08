@@ -60,6 +60,14 @@ class ShoppingListPage extends Component
             : __('planner.shopping.flash.generated'));
     }
 
+    public function setComponentMode(MealPlanService $plans, ShoppingListService $service, int $entryId, string $path, string $mode): void
+    {
+        $plan = $plans->findPlan(auth()->user(), $this->household(), $this->weekStart());
+        abort_unless($plan !== null, 404);
+        $service->setComponentMode(auth()->user(), $plan->entries()->findOrFail($entryId), $path, $mode);
+        session()->flash('status', __('nested_planner.regenerate_hint'));
+    }
+
     public function setChecked(ShoppingListService $service, int $itemId, int $version, bool $checked): void
     {
         $item = $this->item($itemId);
@@ -132,6 +140,7 @@ class ShoppingListPage extends Component
             'list' => $list,
             'items' => $list ? $service->itemsView($user, $list, $this->locale) : collect(),
             'canEdit' => $canEdit,
+            'componentChoices' => $plan ? $service->componentChoices($user, $plan) : collect(),
             'units' => $canEdit ? Unit::query()->with('translations')->orderBy('sort_order')->get() : collect(),
         ]);
     }

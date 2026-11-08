@@ -7,12 +7,14 @@ use App\Enums\MealType;
 use App\Exceptions\StaleMealPlanException;
 use App\Models\BatchCook;
 use App\Models\Household;
+use App\Models\Ingredient;
 use App\Models\IngredientSubstitution;
 use App\Models\MealPlan;
 use App\Models\MealPlanEntry;
 use App\Models\MealPlanEntrySubstitution;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
+use App\Models\RecipeRevision;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -95,10 +97,11 @@ class MealPlanService
                 throw ValidationException::withMessages(['recipe' => __('planner.errors.entry_limit')]);
             }
 
-            $confirmedSubstitutions = $this->validatedSubstitutionChoices($recipe, $confirmedSubstitutions);
+            $confirmedSubstitutions = $this->validatedSubstitutionChoices($recipe, $confirmedSubstitutions, $actor);
             $entry = $plan->entries()->create([
                 'recipe_id' => $recipe->getKey(),
-                'planned_recipe_revision_id' => $recipe->current_revision_id,
+                'planned_recipe_revision_id' => $recipe->isPubliclyAccessible() && $recipe->current_revision_id !== null
+                    ? $recipe->current_revision_id : app(RecipeRevisionService::class)->captureComponentSnapshot($actor, $recipe)->id,
                 'planned_on' => $day->toDateString(),
                 'meal_type' => $meal,
                 'servings' => $servings,
@@ -107,17 +110,14 @@ class MealPlanService
             ]);
 
             if ($confirmedSubstitutions !== []) {
-                $lines = RecipeIngredient::query()
-                    ->where('recipe_id', $recipe->getKey())
-                    ->whereIn('ingredient_id', array_keys($confirmedSubstitutions))
-                    ->get(['id', 'ingredient_id']);
+                $lines = RecipeIngredient::query()->whereIn('id', array_keys($confirmedSubstitutions))->get();
 
                 foreach ($lines as $line) {
                     $entry->confirmedSubstitutions()->create([
-                        'recipe_id' => $recipe->getKey(),
+                        'recipe_id' => $line->recipe_id,
                         'recipe_ingredient_id' => $line->getKey(),
-                        'ingredient_substitution_id' => $confirmedSubstitutions[$line->ingredient_id]['substitution_id'],
-                        'replacement_ingredient_id' => $confirmedSubstitutions[$line->ingredient_id]['replacement_ingredient_id'],
+                        'ingredient_substitution_id' => $confirmedSubstitutions[$line->id]['substitution_id'],
+                        'replacement_ingredient_id' => $confirmedSubstitutions[$line->id]['replacement_ingredient_id'],
                         'confirmed_by' => $actor->getKey(),
                         'confirmed_at' => now(),
                     ]);
@@ -134,7 +134,7 @@ class MealPlanService
      * @param  array<int|string, array<string, mixed>>  $choices
      * @return array<int, array{substitution_id: int, replacement_ingredient_id: int}>
      */
-    public function validatedSubstitutionChoices(Recipe $recipe, array $choices): array
+    public function validatedSubstitutionChoices(Recipe $recipe, array $choices, ?User $viewer = null): array
     {
         if (count($choices) > 100) {
             throw ValidationException::withMessages(['substitutions' => __('site.substitution_invalid_confirmation')]);
@@ -168,32 +168,32 @@ class MealPlanService
             return [];
         }
 
-        $recipeIngredientIds = RecipeIngredient::query()
-            ->where('recipe_id', $recipe->getKey())
-            ->whereIn('ingredient_id', array_keys($normalized))
-            ->distinct()
-            ->pluck('ingredient_id')
-            ->map(fn (int|string $id): int => (int) $id)
-            ->all();
-        $substitutions = IngredientSubstitution::query()
-            ->approved()
-            ->applicableToRecipe((int) $recipe->getKey())
-            ->whereIn('id', array_column($normalized, 'substitution_id'))
-            ->get()
-            ->keyBy('id');
-
-        foreach ($normalized as $ingredientId => $choice) {
+        $resolved = app(RecipeComponentResolver::class)->resolve($recipe, $viewer ?? auth()->user(), purpose: 'discovery');
+        if ($resolved['unresolved'] !== []) {
+            throw ValidationException::withMessages(['substitutions' => __('site.substitution_invalid_confirmation')]);
+        }
+        $lines = collect($resolved['lines']);
+        $substitutions = IngredientSubstitution::query()->approved()->whereIn('id', array_column($normalized, 'substitution_id'))->get()->keyBy('id');
+        $rows = [];
+        foreach ($normalized as $key => $choice) {
             $substitution = $substitutions->get($choice['substitution_id']);
-
-            if (
-                ! in_array($ingredientId, $recipeIngredientIds, true)
-                || $substitution === null
-                || (int) $substitution->ingredient_id !== $ingredientId
-                || (int) $substitution->replacement_ingredient_id !== $choice['replacement_ingredient_id']
-            ) {
+            // Accept legacy ingredient keys, but store confirmations against their actual row identities.
+            $matching = $lines->filter(fn ($line) => ($line->source['recipe_ingredient_id'] ?? null) == $key && $substitution !== null && $line->ingredientId == $substitution->ingredient_id);
+            if ($matching->isEmpty()) {
+                $matching = $lines->filter(fn ($line) => $line->ingredientId === $key);
+            }
+            if ($matching->isEmpty() || $substitution === null || (int) $substitution->replacement_ingredient_id !== $choice['replacement_ingredient_id']) {
                 throw ValidationException::withMessages(['substitutions' => __('site.substitution_invalid_confirmation')]);
             }
+            foreach ($matching as $line) {
+                $rowId = $line->source['recipe_ingredient_id'] ?? null;
+                if (! $rowId || (int) $substitution->ingredient_id !== $line->ingredientId || ! $substitution->appliesToResolvedSource((array) $line->source)) {
+                    throw ValidationException::withMessages(['substitutions' => __('site.substitution_invalid_confirmation')]);
+                }
+                $rows[(int) $rowId] = $choice;
+            }
         }
+        $normalized = $rows;
 
         return $normalized;
     }
@@ -261,7 +261,8 @@ class MealPlanService
             ->whereKey($entry->getKey())
             ->where('version', $expectedVersion)
             ->update([
-                'planned_recipe_revision_id' => Recipe::query()->whereKey($entry->recipe_id)->value('current_revision_id'),
+                'planned_recipe_revision_id' => $entry->recipe->isPubliclyAccessible() && $entry->recipe->current_revision_id !== null
+                    ? $entry->recipe->current_revision_id : app(RecipeRevisionService::class)->captureComponentSnapshot($actor, $entry->recipe)->id,
                 'version' => DB::raw('version + 1'),
                 'updated_at' => now(),
             ]);
@@ -332,18 +333,31 @@ class MealPlanService
 
         $batchSources = BatchCook::query()->whereIn('source_entry_id', $entries->pluck('id'))->pluck('id', 'source_entry_id');
 
-        $items = $entries->map(function (MealPlanEntry $entry) use ($viewer, $locale, $batchSources): array {
+        $pinned = RecipeRevision::whereIn('id', $entries->pluck('planned_recipe_revision_id')->filter())->with('recipe')->get()->keyBy('id');
+        $audience = $plan->isPersonal() ? collect([User::find($plan->created_by)]) : $plan->household->members()->with('user')->get()->pluck('user');
+        $resolvedEntries = [];
+        foreach ($entries as $entry) {
+            $subject = $entry->planned_recipe_revision_id !== null ? $pinned->get($entry->planned_recipe_revision_id) : $entry->recipe;
+            if ($subject !== null && $audience->isNotEmpty() && $audience->every(fn ($user) => $user && app(RecipeComponentResolver::class)->canResolve($subject, $user)) && app(RecipeComponentResolver::class)->canResolve($subject, $viewer)) {
+                $resolvedEntries[$entry->id] = app(RecipeComponentResolver::class)->resolve($subject, $viewer, (string) $entry->servings, purpose: 'display');
+            }
+        }
+        $ingredientIds = collect($resolvedEntries)->flatMap(fn ($result) => collect($result['lines'])->map(fn ($line) => $line->ingredientId))->unique();
+        $ingredients = Ingredient::whereIn('id', $ingredientIds)->with(['translations', 'catalogGroup.translations'])->get()->keyBy('id');
+
+        $items = $entries->map(function (MealPlanEntry $entry) use ($locale, $batchSources, $pinned, $resolvedEntries, $ingredients): array {
             $recipe = $entry->recipe;
-            $available = $recipe !== null && $this->recipeAccess->canView($viewer, $recipe);
+            $subject = $entry->planned_recipe_revision_id !== null ? $pinned->get($entry->planned_recipe_revision_id) : $recipe;
+            $available = isset($resolvedEntries[$entry->id]);
+            $resolved = $resolvedEntries[$entry->id] ?? ['lines' => [], 'components' => []];
             $translation = $available ? $recipe->displayTranslation($locale) : null;
             $confirmedSubstitutions = $available
                 ? $entry->confirmedSubstitutions
-                    ->filter(fn (MealPlanEntrySubstitution $confirmation): bool => $confirmation->ingredientSubstitution?->status === 'approved'
-                        && ($confirmation->ingredientSubstitution->recipe_id === null
-                            || ((int) $confirmation->ingredientSubstitution->recipe_id === (int) $entry->recipe_id
-                                && $confirmation->ingredientSubstitution->validated_revision_id === $recipe->current_revision_id))
+                    ->filter(fn (MealPlanEntrySubstitution $confirmation): bool => $confirmation->recipeIngredient?->ingredient !== null && $confirmation->replacementIngredient !== null && $confirmation->ingredientSubstitution?->status === 'approved'
+                        && collect($resolved['lines'])->contains(fn ($line): bool => (int) ($line->source['recipe_ingredient_id'] ?? 0) === (int) $confirmation->recipe_ingredient_id
+                            && $confirmation->ingredientSubstitution->appliesToResolvedSource((array) $line->source))
                         && (int) $confirmation->ingredientSubstitution->ingredient_id
-                            === (int) $confirmation->recipeIngredient->ingredient_id
+                            === (int) $confirmation->recipeIngredient?->ingredient_id
                         && (int) $confirmation->ingredientSubstitution->replacement_ingredient_id
                             === (int) $confirmation->replacement_ingredient_id)
                     ->map(fn (MealPlanEntrySubstitution $confirmation): array => [
@@ -366,14 +380,15 @@ class MealPlanService
                 'meal' => $entry->meal_type,
                 'servings' => $entry->servings,
                 'available' => $available,
-                'recipe_updated' => $available && $entry->planned_recipe_revision_id !== null && $entry->planned_recipe_revision_id !== $recipe->current_revision_id,
-                'title' => $translation?->title,
+                'recipe_updated' => $available && $entry->planned_recipe_revision_id !== null && $recipe->current_revision_id !== null && $entry->planned_recipe_revision_id !== $recipe->current_revision_id,
+                'title' => $available && $subject instanceof RecipeRevision ? ($subject->payload['translations'][$locale]['title'] ?? $translation?->title) : $translation?->title,
                 'url' => $translation ? route('recipes.show', ['locale' => $translation->locale, 'slug' => $translation->slug], false) : null,
                 'notes' => $available ? $entry->notes : null,
                 'substitutions' => $confirmedSubstitutions,
-                'ingredients' => $available ? $recipe->recipeIngredients->unique('ingredient_id')->map(fn ($line): array => [
-                    'name' => (string) ($line->ingredient->translate($locale)?->name ?? $line->ingredient->code),
-                    'url' => $line->ingredient->encyclopediaUrl($locale),
+                'components' => $available ? $resolved['components'] : [],
+                'ingredients' => $available ? collect($resolved['lines'])->unique('ingredientId')->map(fn ($line) => $ingredients->get($line->ingredientId))->filter()->map(fn ($ingredient): array => [
+                    'name' => (string) ($ingredient->translate($locale)?->name ?? $ingredient->code),
+                    'url' => $ingredient->encyclopediaUrl($locale),
                 ])->values()->all() : [],
                 'leftover' => $entry->batch_cook_id !== null,
                 'consumed' => $entry->consumed_at !== null,
@@ -389,16 +404,16 @@ class MealPlanService
      */
     public function recipeAddable(User $actor, ?Household $household, Recipe $recipe): bool
     {
-        if (! $this->recipeAccess->canView($actor, $recipe)) {
+        if (! app(RecipeComponentResolver::class)->canResolve($recipe, $actor)) {
             return false;
         }
 
-        if ($household === null || $recipe->isPubliclyAccessible()) {
+        if ($household === null) {
             return true;
         }
 
         return $household->members()->with('user')->get()
-            ->every(fn ($member): bool => $this->recipeAccess->canView($member->user, $recipe));
+            ->every(fn ($member): bool => app(RecipeComponentResolver::class)->canResolve($recipe, $member->user));
     }
 
     /**
@@ -447,7 +462,7 @@ class MealPlanService
 
     private function entryRecipeVisibleTo(User $actor, MealPlanEntry $entry): bool
     {
-        return $entry->recipe !== null && $this->recipeAccess->canView($actor, $entry->recipe);
+        return $entry->recipe !== null && app(RecipeComponentResolver::class)->canResolve($entry->planned_recipe_revision_id !== null ? RecipeRevision::find($entry->planned_recipe_revision_id) ?? $entry->recipe : $entry->recipe, $actor);
     }
 
     private function assertRecipeAddable(User $actor, MealPlan $plan, Recipe $recipe): void

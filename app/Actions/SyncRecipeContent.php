@@ -6,9 +6,13 @@ use App\Models\Media;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\RecipeStep;
+use App\Services\Recipes\RecipeEditorData;
+use App\Services\Recipes\RecipeStepGroups;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -25,15 +29,23 @@ class SyncRecipeContent
      * @param  array<int, array<string, mixed>>  $steps
      * @param  array<int, array<string, mixed>>  $ingredients
      */
-    public function handle(Recipe $recipe, array $steps, array $ingredients): void
+    public function handle(Recipe $recipe, array $steps, array $ingredients, ?array $groups = null, ?array $stepGroups = null): void
     {
         Gate::authorize('update', $recipe);
         $storedFiles = [];
 
         try {
-            DB::transaction(function () use ($recipe, $steps, $ingredients, &$storedFiles): void {
-                $this->syncSteps($recipe, array_values($steps), $storedFiles);
-                $this->syncIngredients($recipe, array_values($ingredients));
+            DB::transaction(function () use ($recipe, $steps, $ingredients, $groups, $stepGroups, &$storedFiles): void {
+                $stepGroupIds = $stepGroups === null || ($stepGroups === [] && ! Schema::hasTable('recipe_step_groups')) ? null : app(RecipeStepGroups::class)->sync($recipe, array_values($stepGroups));
+                $groupIds = $groups === null ? null : $this->syncGroups($recipe, array_values($groups));
+                $this->syncSteps($recipe, array_values($steps), $storedFiles, $stepGroupIds);
+                if ($stepGroupIds !== null) {
+                    app(RecipeStepGroups::class)->removeUnused($recipe, array_values($stepGroupIds));
+                }
+                $this->syncIngredients($recipe, array_values($ingredients), $groupIds);
+                if ($groupIds !== null) {
+                    $recipe->ingredientGroups()->whereNotIn('id', $groupIds)->get()->each->delete();
+                }
             });
         } catch (Throwable $exception) {
             foreach ($storedFiles as $storedFile) {
@@ -50,7 +62,7 @@ class SyncRecipeContent
      * @param  list<array<string, mixed>>  $rows
      * @param  list<array{disk: string, path: string}>  $storedFiles
      */
-    private function syncSteps(Recipe $recipe, array $rows, array &$storedFiles): void
+    private function syncSteps(Recipe $recipe, array $rows, array &$storedFiles, ?array $stepGroupIds = null): void
     {
         $keptIds = collect($rows)->pluck('id')->filter()->all();
 
@@ -71,10 +83,11 @@ class SyncRecipeContent
                 : new RecipeStep(['recipe_id' => $recipe->id]);
 
             $step->fill([
+                ...($stepGroupIds !== null ? ['recipe_step_group_id' => $stepGroupIds[$row['step_group_key'] ?? ''] ?? null] : []),
                 'step_number' => $index + 1,
                 'duration_minutes' => filled($row['duration_minutes'] ?? null) ? (int) $row['duration_minutes'] : null,
-                'en' => ['instruction' => $row['instruction_en']],
-                'el' => ['instruction' => $row['instruction_el']],
+                'en' => ['instruction' => $row['instruction_en'] ?? ''],
+                'el' => ['instruction' => $row['instruction_el'] ?? ''],
             ])->save();
 
             $storedFiles = [
@@ -102,7 +115,7 @@ class SyncRecipeContent
     /**
      * @param  list<array<string, mixed>>  $rows
      */
-    private function syncIngredients(Recipe $recipe, array $rows): void
+    private function syncIngredients(Recipe $recipe, array $rows, ?array $groupIds): void
     {
         $keptIds = collect($rows)->pluck('id')->filter()->all();
 
@@ -113,8 +126,14 @@ class SyncRecipeContent
                 ? $recipe->recipeIngredients()->findOrFail($row['id'])
                 : new RecipeIngredient(['recipe_id' => $recipe->id]);
 
+            if ($groupIds !== null) {
+                $ingredient->ingredient_group_id = isset($row['group_index']) ? ($groupIds[$row['group_index']] ?? null) : null;
+            }
+
             $ingredient->fill([
-                'ingredient_id' => $row['ingredient_id'],
+                ...RecipeEditorData::typedFields($row),
+                'line_uuid' => $ingredient->line_uuid ?: (string) Str::uuid(),
+                'ingredient_id' => $row['ingredient_id'] ?? null,
                 'quantity' => filled($row['quantity'] ?? null) ? $row['quantity'] : null,
                 'quantity_max' => filled($row['quantity_max'] ?? null) ? $row['quantity_max'] : null,
                 'unit_id' => filled($row['unit_id'] ?? null) ? $row['unit_id'] : null,
@@ -131,6 +150,24 @@ class SyncRecipeContent
                 ],
             ])->save();
         }
+    }
+
+    private function syncGroups(Recipe $recipe, array $groups): array
+    {
+        $ids = [];
+        foreach ($groups as $index => $row) {
+            $group = filled($row['id'] ?? null)
+                ? $recipe->ingredientGroups()->findOrFail($row['id'])
+                : $recipe->ingredientGroups()->make();
+            $group->sort_order = $index;
+            foreach (config('translatable.locales') as $locale) {
+                $group->translateOrNew($locale)->name = $row['names'][$locale] ?? '';
+            }
+            $group->save();
+            $ids[$index] = $group->id;
+        }
+
+        return $ids;
     }
 
     private function nullIfBlank(?string $value): ?string

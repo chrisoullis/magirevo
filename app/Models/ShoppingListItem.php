@@ -12,16 +12,19 @@ class ShoppingListItem extends Model
     /** @use HasFactory<ShoppingListItemFactory> */
     use HasFactory;
 
+    protected $hidden = ['source_requirements'];
+
     protected $attributes = ['version' => 1, 'is_manual' => false, 'is_optional' => false, 'is_stale' => false];
 
     protected $fillable = [
         'shopping_list_id', 'ingredient_id', 'custom_name', 'unit_id', 'generated_key', 'is_manual', 'is_optional', 'is_stale',
-        'quantity', 'checked_at', 'checked_by', 'checked_base_quantity', 'extra_quantity', 'version',
+        'source_requirements', 'quantity', 'checked_at', 'checked_by', 'checked_base_quantity', 'extra_quantity', 'version',
     ];
 
     protected function casts(): array
     {
         return [
+            'source_requirements' => 'array',
             'is_manual' => 'boolean',
             'is_optional' => 'boolean',
             'is_stale' => 'boolean',

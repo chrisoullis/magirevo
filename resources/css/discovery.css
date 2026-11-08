@@ -1,0 +1,89 @@
+.discovery-filter-panel { margin-block: 1.5rem; padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--cream); }
+.discovery-filter-panel > summary { display: flex; justify-content: space-between; align-items: center; gap: 1rem; min-height: 44px; color: var(--green-dark); font-size: .875rem; font-weight: 600; cursor: pointer; list-style: none; }
+.discovery-filter-panel > summary::-webkit-details-marker { display: none; }
+.discovery-filter-panel[open] > summary { margin-bottom: 1rem; }
+.discovery-filter-panel[open] > summary .kitchen-icon { transform: rotate(180deg); }
+.discovery-filter-panel .home-catalogue-filters { gap: 1rem; }
+.discovery-filter-panel label small { max-width: 240px; font-size: .6875rem; line-height: 1.6; }
+.discovery-ingredient-filter { padding-top: 1rem; border-top: 1px solid var(--line); }
+.discovery-ingredient-filter > label { display: block; font-size: .8125rem; font-weight: 600; }
+.discovery-ingredient-filter > p { margin: .4rem 0 .75rem; color: var(--muted); font-size: .75rem; }
+.discovery-ingredient-filter > input { width: min(100%, 480px); min-height: 44px; padding: .75rem; border: 1px solid var(--line); border-radius: .65rem; background: white; color: var(--ink); font-size: .875rem; }
+.discovery-ingredient-filter > ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; width: min(100%, 640px); padding: .5rem 0 0; margin: 0; list-style: none; }
+.discovery-ingredient-filter li button { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: 100%; min-height: 44px; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: .5rem; background: white; color: var(--green); text-align: start; font-size: .8125rem; cursor: pointer; }
+.discovery-ingredient-filter li button:hover { border-color: var(--sage); }
+.discovery-ingredient-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+.discovery-ingredient-chips > span { display: inline-flex; align-items: center; gap: .3rem; padding-left: .75rem; border: 1px solid #cbd4be; border-radius: 999px; background: white; font-size: .8125rem; }
+.discovery-ingredient-chips button { display: grid; place-items: center; min-width: 44px; min-height: 44px; border: 0; border-radius: 50%; background: transparent; color: var(--green); cursor: pointer; font-size: 1.25rem; }
+.discovery-collection { display: inline-flex; padding: .5rem .75rem; border-radius: .5rem; color: var(--green); background: #e9eee1; font-size: .75rem; }
+.recipe-verified-claims { display: flex; flex-wrap: wrap; gap: .4rem; padding: 0; margin: 0 0 .75rem; list-style: none; }
+.recipe-verified-claims li { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .5rem; border-radius: .4rem; color: var(--green); background: #edf0e7; font-size: .6875rem; }
+.recipe-verified-claims .kitchen-icon { width: 14px; height: 14px; }
+.ingredient-page.encyclopedia-index, .ingredient-page.encyclopedia-detail { width: min(1280px, calc(100% - 64px)); }
+.encyclopedia-index > .ingredient-heading { max-width: 760px; }
+.encyclopedia-index > .ingredient-heading > h1 { letter-spacing: -.045em; }
+.encyclopedia-index > .ingredient-heading > p { font-size: .9375rem; line-height: 1.8; }
+.encyclopedia-catalogue .ingredient-filters { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; padding: 1.5rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--cream); }
+.encyclopedia-catalogue .ingredient-filters label { font-size: .75rem; color: var(--muted); }
+.encyclopedia-catalogue .ingredient-filters input, .encyclopedia-catalogue .ingredient-filters select { min-height: 48px; padding: .75rem; border-radius: .6rem; font-size: .875rem; }
+.encyclopedia-catalogue .ingredient-filters button { margin-top: 26px; }
+.ingredient-alphabet { display: flex; align-items: center; gap: .3rem; overflow-x: auto; padding: .5rem 0 1rem; scrollbar-width: thin; }
+.ingredient-alphabet a { display: grid; place-items: center; flex: 0 0 auto; min-width: 40px; min-height: 44px; padding: .5rem; border: 1px solid transparent; border-radius: .6rem; color: var(--muted); font-size: .8125rem; }
+.ingredient-alphabet a[aria-current], .ingredient-alphabet a:hover { border-color: var(--line); color: var(--green); background: var(--cream); }
+.ingredient-alphabet a[aria-current] { font-weight: 600; }
+.ingredient-results-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.ingredient-results-heading > p { margin: 0; font-size: .8125rem; }
+.ingredient-results-heading > a { min-height: 44px; display: inline-flex; align-items: center; color: var(--green); font-size: .8125rem; text-decoration: underline; text-underline-offset: .25rem; }
+.encyclopedia-catalogue .ingredient-card { border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); }
+.encyclopedia-catalogue .ingredient-card img { transition: transform .2s ease; }
+.encyclopedia-catalogue .ingredient-card:hover img { transform: scale(1.02); }
+.encyclopedia-catalogue .ingredient-card h2 { font-size: 1.5rem; line-height: 1.3; }
+.ingredient-other-name { display: block; margin: .5rem 0; color: var(--muted); font-size: .875rem; line-height: 1.5; }
+.ingredient-card-description { color: var(--muted); font-size: .8125rem; line-height: 1.8; margin-top: .75rem; }
+.ingredient-card-action { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; margin-top: .75rem; color: var(--green); font-size: .75rem; }
+.ingredient-card-action .kitchen-icon { width: 16px; height: 16px; }
+.encyclopedia-catalogue .ingredient-empty { grid-column: 1 / -1; padding: 3rem 1.5rem; border: 1px dashed var(--line); border-radius: 1rem; text-align: center; }
+.ingredient-empty > .kitchen-icon { margin: auto; color: var(--sage); width: 32px; height: 32px; }
+.ingredient-empty > h2 { margin-top: .75rem; font: 400 1.75rem/1.3 var(--serif); }
+.ingredient-empty > p { color: var(--muted); font-size: .875rem; }
+.ingredient-empty > a { display: inline-flex; align-items: center; min-height: 44px; color: var(--green); text-decoration: underline; }
+.encyclopedia-detail .breadcrumbs { width: 100%; padding-top: 0; font-size: .75rem; }
+.encyclopedia-detail .ingredient-detail { gap: clamp(2rem, 5vw, 4.5rem); }
+.encyclopedia-detail .ingredient-portrait > img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-panel); background: var(--cream); }
+.encyclopedia-detail .ingredient-heading > h1 { margin: 1rem 0 .75rem; font: 400 clamp(2.25rem, 4vw, 3.75rem)/1.2 var(--serif); letter-spacing: -.045em; }
+.ingredient-group-pill { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; padding: .5rem .75rem; border: 1px solid #dce2d2; border-radius: 999px; color: var(--green); background: #eef1e8; font-size: .75rem; }
+.ingredient-group-pill > .kitchen-icon { width: 17px; height: 17px; }
+.ingredient-introduction { margin-block: 1.5rem; font-size: 1rem; line-height: 1.9; }
+.ingredient-pending, .ingredient-aliases { color: var(--muted); font-size: .875rem; line-height: 1.8; margin-block: 1.25rem; }
+.ingredient-detail-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
+.ingredient-section-links { display: flex; flex-wrap: wrap; gap: .5rem 1rem; margin-top: 1rem; }
+.ingredient-section-links > a { display: inline-flex; align-items: center; min-height: 44px; color: var(--green); font-size: .75rem; text-decoration: underline; text-underline-offset: .25rem; }
+.ingredient-education-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1.25rem; margin-top: 3.5rem; }
+.encyclopedia-detail .ingredient-education h2 { font-size: 1.5rem; line-height: 1.3; }
+.ingredient-education-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--green); background: var(--cream); }
+.ingredient-education .ingredient-prose { color: var(--muted); font-size: .875rem; line-height: 1.9; }
+.ingredient-substitution-panel { padding: 2rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--cream); }
+.ingredient-substitution-panel > p { max-width: 760px; font-size: .875rem; color: var(--muted); }
+.encyclopedia-detail .ingredient-substitutions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: 0; list-style: none; }
+.encyclopedia-detail .ingredient-substitutions > li { display: flex; align-items: start; gap: .75rem; margin: 0; padding: 1rem; border-radius: .75rem; background: white; }
+.ingredient-substitutions > li > .kitchen-icon { color: var(--green); margin-top: .25rem; }
+.encyclopedia-detail .ingredient-substitutions a { font-size: .875rem; }
+.ingredient-substitutions .ingredient-prose { margin-top: .5rem; color: var(--muted); font-size: .8125rem; line-height: 1.8; }
+@media (max-width: 900px) {
+    .encyclopedia-catalogue .ingredient-filters { grid-template-columns: 1fr 1fr; }
+    .encyclopedia-catalogue .ingredient-filters button { margin-top: 26px; }
+    .encyclopedia-detail .ingredient-detail { grid-template-columns: 1fr; }
+    .encyclopedia-detail .ingredient-portrait { max-width: 640px; }
+    .encyclopedia-detail .ingredient-portrait > img { aspect-ratio: 3 / 2; }
+}
+@media (max-width: 600px) {
+    .ingredient-page.encyclopedia-index, .ingredient-page.encyclopedia-detail { width: calc(100% - 32px); }
+    .encyclopedia-catalogue .ingredient-filters { grid-template-columns: 1fr; padding: 1rem; gap: .75rem; }
+    .encyclopedia-catalogue .ingredient-filters button { margin-top: 0; }
+    .discovery-filter-panel { padding: 1rem; }
+    .discovery-ingredient-filter > ul { grid-template-columns: 1fr; }
+    .discovery-ingredient-filter > input { font-size: 1rem; }
+    .ingredient-substitution-panel { padding: 1.25rem; }
+    .encyclopedia-detail .ingredient-substitutions { grid-template-columns: 1fr; }
+    .ingredient-education-grid { margin-top: 2rem; }
+}

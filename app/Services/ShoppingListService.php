@@ -6,6 +6,9 @@ use App\Enums\HouseholdAbility;
 use App\Exceptions\StaleShoppingListException;
 use App\Models\Ingredient;
 use App\Models\MealPlan;
+use App\Models\MealPlanEntry;
+use App\Models\MealPlanEntryComponentMode;
+use App\Models\RecipeRevision;
 use App\Models\ShoppingList;
 use App\Models\ShoppingListItem;
 use App\Models\Unit;
@@ -30,6 +33,38 @@ use Illuminate\Validation\ValidationException;
  */
 class ShoppingListService
 {
+    /** Persist a choice only; regeneration remains an explicit action. */
+    public function setComponentMode(User $actor, MealPlanEntry $entry, string $path, string $mode): void
+    {
+        Gate::forUser($actor)->authorize('update', $this->ensureList($actor, $entry->mealPlan));
+        abort_unless(in_array($mode, ['scratch', 'prepared'], true) && $entry->batch_cook_id === null, 422);
+        $components = $this->componentChoices($actor, $entry->mealPlan)->firstWhere('entry_id', $entry->id);
+        $component = collect($components['components'] ?? [])->firstWhere('path', $path);
+        abort_unless($component !== null && ($mode !== 'prepared' || $component['can_use_prepared']), 422);
+        MealPlanEntryComponentMode::updateOrCreate(['meal_plan_entry_id' => $entry->id, 'path' => $path], ['mode' => $mode]);
+    }
+
+    public function componentChoices(User $actor, MealPlan $plan): Collection
+    {
+        Gate::forUser($actor)->authorize('view', $plan);
+        $audience = $plan->isPersonal() ? collect([$plan->createdBy ?? User::find($plan->created_by)]) : $plan->household->members()->with('user')->get()->pluck('user');
+        $resolver = app(RecipeComponentResolver::class);
+        $entries = $plan->entries()->whereNull('batch_cook_id')->with('recipe')->get();
+        $revisions = RecipeRevision::whereIn('id', $entries->pluck('planned_recipe_revision_id')->filter())->with('recipe')->get()->keyBy('id');
+        $modes = MealPlanEntryComponentMode::whereIn('meal_plan_entry_id', $entries->modelKeys())->get()->groupBy('meal_plan_entry_id');
+
+        return $entries->map(function ($entry) use ($actor, $audience, $resolver, $revisions, $modes) {
+            $subject = $entry->planned_recipe_revision_id !== null ? $revisions->get($entry->planned_recipe_revision_id) : $entry->recipe;
+            if ($subject === null || $audience->isEmpty() || ! $audience->every(fn ($user) => $user && $resolver->canResolve($subject, $user)) || ! $resolver->canResolve($subject, $actor)) {
+                return null;
+            }
+            $choices = $modes->get($entry->id, collect())->pluck('mode', 'path')->all();
+            $result = $resolver->resolve($subject, $actor, (string) $entry->servings, $choices);
+
+            return ['entry_id' => $entry->id, 'servings' => $entry->servings, 'components' => $result['components']];
+        })->filter(fn ($item) => $item !== null && $item['components'] !== [])->values();
+    }
+
     public function __construct(
         private PlanIngredientCollector $collector,
         private IngredientConsolidator $consolidator,
@@ -270,7 +305,7 @@ class ShoppingListService
     private function forShopping(array $lines): array
     {
         return array_map(fn (QuantityLine $line): QuantityLine => new QuantityLine(
-            $line->ingredientId, $line->unit, $line->quantityMax ?? $line->quantity, null, $line->isOptional,
+            $line->ingredientId, $line->unit, $line->quantityMax ?? $line->quantity, null, $line->isOptional, $line->source,
         ), $lines);
     }
 
@@ -284,6 +319,7 @@ class ShoppingListService
     private function applyRequirement(ShoppingListItem $item, ConsolidatedQuantity $row): void
     {
         $item->fill([
+            'source_requirements' => $item->exists && $item->source_requirements == $row->sources ? $item->source_requirements : $row->sources,
             'unit_id' => $row->unit?->getKey(),
             'quantity' => $row->quantity,
             'is_optional' => $row->isOptional,

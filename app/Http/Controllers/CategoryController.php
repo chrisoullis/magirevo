@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PublicRecipeFiltersRequest;
 use App\Models\Category;
 use Illuminate\Contracts\View\View;
 
 class CategoryController extends Controller
 {
-    public function show(string $locale, string $slug): View
+    public function show(PublicRecipeFiltersRequest $request, string $locale, string $slug): View
     {
         $category = Category::query()
             ->publiclyVisible()

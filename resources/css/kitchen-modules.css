@@ -1,0 +1,68 @@
+/* Shared presentation for the existing kitchen workflows. */
+.kitchen-shortcuts {
+    display: flex; flex-wrap: wrap; gap: .5rem;
+    width: min(1320px, calc(100% - 32px)); margin: 1.5rem auto 0;
+}
+.kitchen-shortcuts a {
+    display: inline-flex; align-items: center; min-height: 44px;
+    padding: .55rem 1rem; border: 1px solid var(--line); border-radius: 999px;
+    background: white; color: var(--green); font-size: .8125rem;
+}
+.kitchen-shortcuts a:hover { background: var(--cream); border-color: var(--sage); }
+.kitchen-shortcuts [aria-current="page"] { background: var(--green); border-color: var(--green); color: white; }
+.kitchen-module { min-width: 0; }
+.kitchen-module > header {
+    padding: clamp(1.25rem, 3vw, 2.5rem); border: 1px solid var(--line);
+    border-radius: var(--radius-panel); background: var(--cream);
+}
+.kitchen-module > header h1 { font: 400 clamp(2rem, 4vw, 3rem)/1.2 var(--serif); }
+.kitchen-module > header p { color: var(--muted); }
+.kitchen-module :where(h2, h3) { overflow-wrap: anywhere; }
+.kitchen-module :where(input:not([type="checkbox"]), select, textarea) {
+    min-width: 0; max-width: 100%; background: white; color: var(--ink); border-color: var(--line);
+}
+.kitchen-module :where(input[type="checkbox"]) { accent-color: var(--green); }
+.kitchen-module > form, .household-module > section, .household-module > ul > li > a,
+.household-module section li, .shopping-module > ul {
+    padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius-panel);
+    background: white; box-shadow: var(--shadow-panel);
+}
+.kitchen-module .button:not(.button-dark) { background: white; border-color: var(--line); }
+.kitchen-module .button:not(.button-dark):hover { background: var(--cream); border-color: var(--sage); }
+.planner-module > nav { padding: .75rem; border-radius: var(--radius-panel); background: var(--cream); }
+.planner-week { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.planner-week > section { min-width: 0; background: white; border-color: var(--line); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); }
+.planner-week h2 { padding-bottom: .75rem; border-bottom: 1px solid var(--line); color: var(--green); }
+.planner-week li { padding: .75rem 0; border-bottom: 1px solid var(--line); }
+.shopping-progress { display: grid; gap: .5rem; padding: 1.25rem; border-radius: var(--radius-panel); background: var(--cream); font-weight: 600; }
+.shopping-progress progress { width: 100%; height: .65rem; accent-color: var(--green); }
+.shopping-module > ul { padding: 0; overflow: hidden; }
+.shopping-module > ul > li { padding: .75rem 1rem; }
+.shopping-module > ul > li:has(input:checked) { background: var(--paper); }
+.household-module > ul { padding: 0; list-style: none; }
+.variation-shell > header { padding: 1.5rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--cream); }
+.variation-shell :where(fieldset, .variation-row, .variation-attribution, .variation-card, .variation-media form) { border-radius: var(--radius-panel); }
+.variation-shell fieldset { background: white; }
+.variation-shell .variation-save { bottom: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); }
+@media (min-width: 1100px) { .planner-week { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) {
+    .planner-week { grid-template-columns: 1fr; }
+    .kitchen-shortcuts { gap: .375rem; }
+    .kitchen-shortcuts a { padding: .5rem .75rem; }
+    .kitchen-module > form, .household-module > section { padding: 1rem; }
+    .variation-shell .variation-save { bottom: 5.5rem; }
+}
+.what-cook-search, .what-cook-filters, .what-cook-result {
+    border-radius: var(--radius-panel); box-shadow: var(--shadow-panel);
+}
+.what-cook-search-field { border-radius: var(--radius-control); }
+.what-cook-search-field:focus-within { outline: 3px solid var(--green); outline-offset: 3px; }
+.what-cook-selected button { width: 44px; height: 44px; }
+.what-cook-search-header, .what-cook-results-heading { flex-wrap: wrap; }
+.saved-heading h1 { font-size: clamp(2rem, 5vw, 3.875rem); line-height: 1.15; overflow-wrap: anywhere; }
+.shared-attribution { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--line); color: var(--green); font-size: .875rem; }
+@media (max-width: 700px) {
+    .what-cook-page { width: calc(100% - 32px); padding-top: 2rem; }
+    .what-cook-selected li { max-width: 100%; }
+    .what-cook-selected .ingredient-reference { overflow-wrap: anywhere; }
+}

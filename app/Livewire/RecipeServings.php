@@ -163,7 +163,8 @@ class RecipeServings extends Component
         $base = $presenter->baseServings($recipe);
         $current = $this->clamp($this->servings === '' ? $base : $this->servings, $base);
         $groups = $presenter->ingredientGroups($recipe, (string) $current);
-        $items = collect($groups)->flatMap(fn (array $group) => $group['items']);
+        $items = collect($groups)->flatMap(fn (array $group) => $group['items'])
+            ->filter(fn (array $item): bool => $item['line_type'] === 'ingredient');
         $ingredientIds = $items->pluck('ingredient_id')->unique()->values();
         $recipeIngredientIds = $items->pluck('recipe_ingredient_id')->unique()->values();
         $substitutionsByIngredient = $ingredientIds->isEmpty()
@@ -190,6 +191,10 @@ class RecipeServings extends Component
 
         foreach ($groups as &$group) {
             foreach ($group['items'] as &$item) {
+                if ($item['line_type'] === 'recipe') {
+                    continue;
+                }
+
                 $item['substitutions'] = $substitutionsByIngredient
                     ->get($item['ingredient_id'], collect())
                     ->map(fn (IngredientSubstitution $substitution): array => [
@@ -221,6 +226,7 @@ class RecipeServings extends Component
             'min' => self::MIN_SERVINGS,
             'max' => self::MAX_SERVINGS,
             'canPersonalize' => $canPersonalize,
+            'stateVersion' => $recipe->current_revision_id ?? $recipe->updated_at?->getTimestamp(),
             'ingredientOptions' => $canPersonalize && $this->editingRecipeIngredientId !== null
                 ? $this->ingredientOptions()
                 : [],
@@ -237,7 +243,7 @@ class RecipeServings extends Component
 
     private function recipeLine(Recipe $recipe, int $recipeIngredientId): RecipeIngredient
     {
-        return $recipe->recipeIngredients()->whereKey($recipeIngredientId)->firstOrFail();
+        return $recipe->recipeIngredients()->where('line_type', 'ingredient')->whereKey($recipeIngredientId)->firstOrFail();
     }
 
     private function currentUser(): ?User

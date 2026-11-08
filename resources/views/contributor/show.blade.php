@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', __('contributor.title').' | The Sunday Table')
+@section('title', __('contributor.title').' | My Kitchen')
 @section('robots', 'noindex, nofollow')
 
 @section('content')

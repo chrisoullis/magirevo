@@ -8,8 +8,8 @@ use App\Actions\StoreRecipeMedia;
 use App\Models\Media;
 use App\Models\Recipe;
 use App\Services\RecipeRevisionService;
+use App\Services\Recipes\RecipeEditorFields;
 use Filament\Actions\Action;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -21,7 +21,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 
 class MediaRelationManager extends RelationManager
 {
@@ -69,22 +68,8 @@ class MediaRelationManager extends RelationManager
                     ->hidden(fn (): bool => $this->isLiveRecipe())
                     ->label('Upload image')
                     ->schema([
-                        FileUpload::make('file')
-                            ->label('Image')
-                            ->required()
-                            ->image()
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                            ->maxSize(10240)
-                            ->rule(Rule::dimensions()->maxWidth(6000)->maxHeight(6000))
-                            ->storeFiles(false),
-                        Select::make('role')
-                            ->options(['cover' => 'Cover', 'gallery' => 'Gallery'])
-                            ->default('gallery')
-                            ->required(),
-                        TextInput::make('alt_text_en')->label('English alt text')->required()->maxLength(255),
-                        Textarea::make('caption_en')->label('English caption')->maxLength(1000),
-                        TextInput::make('alt_text_el')->label('Greek alt text')->required()->maxLength(255),
-                        Textarea::make('caption_el')->label('Greek caption')->maxLength(1000),
+                        ...RecipeEditorFields::imageUploadFields(),
+                        Select::make('role')->options(['cover' => 'Cover', 'gallery' => 'Gallery'])->default('gallery')->required(),
                     ])
                     ->action(function (array $data, StoreRecipeMedia $storeRecipeMedia): void {
                         /** @var Recipe $recipe */

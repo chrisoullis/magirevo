@@ -2,7 +2,7 @@
 
 return [
     'skip' => 'Skip to content',
-    'brand_label' => 'The Sunday Table home',
+    'brand_label' => 'My Kitchen home',
     'language_label' => 'Choose language',
     'main_nav' => 'Main navigation',
     'nav_recipes' => 'Recipes',
@@ -12,15 +12,15 @@ return [
     'log_in' => 'Log in',
     'log_out' => 'Log out',
     'join' => 'Join Us',
-    'default_title' => 'The Sunday Table | Recipes for real life',
-    'default_description' => 'Good things happen around a table. Find relaxed, seasonal recipes for real life at The Sunday Table.',
+    'default_title' => 'My Kitchen | Recipes for real life',
+    'default_description' => 'Good things happen around a table. Find relaxed, seasonal recipes for real life at My Kitchen.',
     'footer_tagline' => 'Cook something good. Pass it around.',
     'footer_credit' => 'Made for the joy of eating well.',
     'sitemap' => 'Sitemap',
     'home' => 'Home',
 
-    'home_title' => 'The Sunday Table | Good food for real life',
-    'home_description' => 'Seasonal, unfussy recipes made for sharing. Find your next favorite dinner, bake or weekend lunch at The Sunday Table.',
+    'home_title' => 'My Kitchen | Good food for real life',
+    'home_description' => 'Seasonal, unfussy recipes made for sharing. Find your next favorite dinner, bake or weekend lunch at My Kitchen.',
     'hero_eyebrow' => 'The everyday cookbook',
     'hero_title_1' => 'Good food.',
     'hero_title_2' => 'Good company.',
@@ -74,7 +74,7 @@ return [
 
     'category_eyebrow' => 'Category',
     'category_title' => ':name recipes',
-    'category_description' => 'Browse :name recipes from The Sunday Table.',
+    'category_description' => 'Browse :name recipes from My Kitchen.',
     'other_categories' => 'More categories',
 
     'breadcrumb' => 'Breadcrumb',
@@ -90,7 +90,7 @@ return [
     'remove_saved' => 'Remove from recipe box',
     'join_to_save' => 'Join to save this recipe',
     'verify_to_save' => 'Verify email to save',
-    'photo_caption' => 'From The Sunday Table kitchen',
+    'photo_caption' => 'From My Kitchen kitchen',
     'need_eyebrow' => 'What you\'ll need',
     'ingredients' => 'Ingredients',
     'servings' => 'Servings',
@@ -164,8 +164,8 @@ return [
     'personal_substitution_invalid_ingredient' => 'Choose an active ingredient.',
     'substitution_recipe_ingredient_mismatch' => 'The selected recipe does not contain this original ingredient.',
 
-    'saved_title' => 'My recipe box | The Sunday Table',
-    'saved_description' => 'Your saved recipes from The Sunday Table.',
+    'saved_title' => 'My recipe box | My Kitchen',
+    'saved_description' => 'Your saved recipes from My Kitchen.',
     'saved_eyebrow' => 'Kept close',
     'saved_heading' => 'Your recipe box.',
     'saved_sub' => 'A little collection of things you want to cook.',
@@ -182,7 +182,7 @@ return [
     'cooking_mode_title' => 'Cooking mode',
     'cooking_completed_count' => '{count} done',
     'cooking_ingredients_note' => 'Tick ingredients off as you go. They stay in sync with the recipe page.',
-    'cooking_page_title' => 'What Can I Cook? | The Sunday Table',
+    'cooking_page_title' => 'What Can I Cook? | My Kitchen',
     'cooking_page_description' => 'Choose ingredients you have and find public recipes that use them.',
     'cooking_page_eyebrow' => 'A little kitchen inspiration',
     'cooking_intro' => 'Select ingredients you have on hand. Matches use ingredient names only; quantities are not inferred.',
@@ -245,5 +245,5 @@ return [
     'print_servings' => 'Servings',
     'print_instructions' => 'Instructions',
     'print_photo_credit' => 'Photo: :credit',
-    'print_source' => 'Recipe from The Sunday Table',
+    'print_source' => 'Recipe from My Kitchen',
 ];

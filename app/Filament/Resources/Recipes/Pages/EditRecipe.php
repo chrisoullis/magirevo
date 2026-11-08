@@ -6,28 +6,29 @@ use App\Enums\RecipeRevisionStatus;
 use App\Enums\RecipeVisibility;
 use App\Filament\Resources\RecipeRevisions\RecipeRevisionResource;
 use App\Filament\Resources\Recipes\Actions\ReviewActions;
-use App\Filament\Resources\Recipes\Pages\Concerns\SavesRecipeContent;
 use App\Filament\Resources\Recipes\RecipeResource;
-use App\Models\Media;
 use App\Models\Recipe;
 use App\Models\RecipeRevision;
 use App\Models\RecipeRevisionAudit;
 use App\Services\RecipeAccessService;
 use App\Services\RecipePublishingService;
 use App\Services\RecipeRevisionService;
+use App\Services\Recipes\RecipeEditorData;
+use App\Services\Recipes\RecipeEditorService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 
 class EditRecipe extends EditRecord
 {
-    use SavesRecipeContent;
+    #[Locked]
+    public string $editorVersion = '';
 
     protected static string $resource = RecipeResource::class;
 
@@ -149,73 +150,19 @@ class EditRecipe extends EditRecord
         /** @var Recipe $recipe */
         $recipe = $this->getRecord();
 
-        foreach (config('translatable.locales') as $locale) {
-            $translation = $recipe->getTranslation($locale, false);
+        $this->editorVersion = app(RecipeEditorService::class)->version($recipe);
 
-            $data[$locale] = $translation?->only(['title', 'slug', 'summary', 'introduction', 'seo_title', 'seo_description']) ?? [];
-        }
-
-        $data['steps_data'] = $recipe->steps()->with(['translations', 'media.translations'])->get()
-            ->map(function ($step): array {
-                $images = $step->media
-                    ->where('pivot.kind', 'image')
-                    ->where('media_type', Media::TYPE_IMAGE);
-                $video = $step->media->first(fn (Media $media): bool => $media->pivot->kind === 'video' && $media->media_type === Media::TYPE_VIDEO);
-
-                return [
-                    'id' => $step->id,
-                    'instruction_en' => $step->getTranslation('en', false)?->instruction,
-                    'instruction_el' => $step->getTranslation('el', false)?->instruction,
-                    'duration_minutes' => $step->duration_minutes,
-                    'media_items' => $images->map(fn (Media $media): array => [
-                        'media_id' => $media->id,
-                        'alt_text_en' => $media->getTranslation('en', false)?->alt_text,
-                        'caption_en' => $media->getTranslation('en', false)?->caption,
-                        'alt_text_el' => $media->getTranslation('el', false)?->alt_text,
-                        'caption_el' => $media->getTranslation('el', false)?->caption,
-                    ])->values()->all(),
-                    'video_url' => $video?->url,
-                    'video_alt_text_en' => $video?->getTranslation('en', false)?->alt_text,
-                    'video_caption_en' => $video?->getTranslation('en', false)?->caption,
-                    'video_alt_text_el' => $video?->getTranslation('el', false)?->alt_text,
-                    'video_caption_el' => $video?->getTranslation('el', false)?->caption,
-                ];
-            })->all();
-
-        $data['ingredients_data'] = $recipe->recipeIngredients()->with('translations')->orderBy('sort_order')->get()
-            ->map(fn ($line): array => [
-                'id' => $line->id,
-                'ingredient_id' => $line->ingredient_id,
-                'quantity' => $line->quantity !== null ? (float) $line->quantity : null,
-                'quantity_max' => $line->quantity_max !== null ? (float) $line->quantity_max : null,
-                'unit_id' => $line->unit_id,
-                'scaling_mode' => $line->scaling_mode,
-                'is_optional' => $line->is_optional,
-                'quantity_text_en' => $line->getTranslation('en', false)?->quantity_text,
-                'quantity_text_el' => $line->getTranslation('el', false)?->quantity_text,
-                'preparation_note_en' => $line->getTranslation('en', false)?->preparation_note,
-                'preparation_note_el' => $line->getTranslation('el', false)?->preparation_note,
-            ])->all();
-
-        return $data;
+        return [...$data, ...RecipeEditorData::fromRecipe($recipe)];
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        $data = $this->extractRecipeContent($data);
+        $updated = app(RecipeEditorService::class)->update(auth()->user(), $record, $data, $this->editorVersion);
+        $this->editorVersion = app(RecipeEditorService::class)->version($updated);
+        if ($record->derived_from_recipe_id !== null) {
+            RecipeRevisionAudit::query()->create(['recipe_id' => $record->id, 'actor_id' => auth()->id(), 'action' => 'variation_edited']);
+        }
 
-        return DB::transaction(function () use ($record, $data): Model {
-            $record->update($data);
-            if ($record->derived_from_recipe_id !== null) {
-                RecipeRevisionAudit::query()->create(['recipe_id' => $record->id, 'actor_id' => auth()->id(), 'action' => 'variation_edited']);
-            }
-
-            return $record;
-        });
-    }
-
-    protected function afterSave(): void
-    {
-        $this->persistRecipeContent($this->getRecord());
+        return $updated;
     }
 }

@@ -132,6 +132,7 @@ class MealPlanTemplateService
 
                 $plan->entries()->create([
                     'recipe_id' => $item->recipe_id,
+                    'planned_recipe_revision_id' => $item->recipe->isPubliclyAccessible() && $item->recipe->current_revision_id !== null ? $item->recipe->current_revision_id : app(RecipeRevisionService::class)->captureComponentSnapshot($actor, $item->recipe)->id,
                     'planned_on' => $date,
                     'meal_type' => $item->meal_type,
                     'servings' => $item->servings,
@@ -198,7 +199,7 @@ class MealPlanTemplateService
 
         return $template->entries()->with('recipe.translations')->orderBy('day_of_week')->orderBy('id')->get()
             ->map(function (MealPlanTemplateEntry $entry) use ($viewer, $locale): array {
-                $available = $entry->recipe !== null && $this->recipeAccess->canView($viewer, $entry->recipe);
+                $available = $entry->recipe !== null && app(RecipeComponentResolver::class)->canResolve($entry->recipe, $viewer);
 
                 return [
                     'id' => $entry->getKey(),

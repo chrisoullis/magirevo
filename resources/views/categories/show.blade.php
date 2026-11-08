@@ -14,7 +14,7 @@
     ];
 @endphp
 
-@section('title', __('site.category_title', ['name' => $name]).' | The Sunday Table')
+@section('title', __('site.category_title', ['name' => $name]).' | My Kitchen')
 @section('meta_description', $description)
 @section('canonical', $url)
 

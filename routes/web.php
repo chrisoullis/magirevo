@@ -6,9 +6,13 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ContributorRecipeStudioController;
+use App\Http\Controllers\CookingSessionController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\IngredientImageController;
 use App\Http\Controllers\MediaController;
+use App\Http\Controllers\MyKitchenController;
 use App\Http\Controllers\RecipeController;
 use App\Http\Controllers\RecipeDietaryClaimReportController;
 use App\Http\Controllers\RecipeRightsEvidenceController;
@@ -31,15 +35,26 @@ Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::pattern('locale', 'en|el');
 
 Route::prefix('{locale}')->middleware(SetLocale::class)->group(function (): void {
-    Route::view('/', 'home')->name('home.localized');
+    Route::get('/', HomeController::class)->name('home.localized');
     Route::get('/ingredients', [IngredientController::class, 'index'])->name('ingredients.index');
     Route::get('/ingredients/{slug}', [IngredientController::class, 'show'])->name('ingredients.show');
     Route::view('/what-can-i-cook', 'what-can-i-cook')->middleware('cache.headers:private;no_store')->name('recipes.what-can-i-cook');
+    Route::get('/recipe-studio/create', [ContributorRecipeStudioController::class, 'create'])->middleware(['auth', 'verified'])->name('recipes.create');
+    Route::get('/recipes/{recipe}/cooking-content', [CookingSessionController::class, 'content'])->whereNumber('recipe')->middleware('throttle:120,1')->name('cooking-sessions.content');
     Route::get('/recipes/{slug}', [RecipeController::class, 'show'])->name('recipes.show');
+    Route::get('/recipes/{slug}/component', [RecipeController::class, 'component'])->name('recipes.component');
     Route::get('/recipes/{slug}/print', [RecipeController::class, 'print'])->name('recipes.print');
     Route::get('/categories/{slug}', [CategoryController::class, 'show'])->name('categories.show');
 
     Route::middleware(['auth', 'verified'])->group(function (): void {
+        Route::middleware(['cache.headers:private;no_store', 'throttle:120,1'])->group(function (): void {
+            Route::post('/recipes/{recipe}/cooking-sessions', [CookingSessionController::class, 'store'])->whereNumber('recipe')->name('cooking-sessions.store');
+            Route::get('/recipes/{recipe}/cooking-session', [CookingSessionController::class, 'latest'])->whereNumber('recipe')->name('cooking-sessions.latest');
+            Route::get('/cooking-sessions/{session}', [CookingSessionController::class, 'show'])->whereUuid('session')->name('cooking-sessions.show');
+            Route::patch('/cooking-sessions/{session}', [CookingSessionController::class, 'update'])->whereUuid('session')->name('cooking-sessions.update');
+        });
+        Route::get('/recipe-studio/{recipe}', [ContributorRecipeStudioController::class, 'edit'])->whereNumber('recipe')->name('recipes.studio.edit');
+        Route::get('/my-kitchen', MyKitchenController::class)->name('my-kitchen.index');
         Route::get('/my-recipes', [RecipeVariationController::class, 'index'])->name('recipes.personal');
         Route::get('/my-recipes/{recipe}/edit', [RecipeVariationController::class, 'edit'])->whereNumber('recipe')->name('recipes.variations.edit');
         Route::get('/shared-with-me', SharedWithMeController::class)->name('recipes.shared');

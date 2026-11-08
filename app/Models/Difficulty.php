@@ -64,7 +64,7 @@ class Difficulty extends Model
                 ->when(filled($includeCode), fn (Builder $query) => $query->orWhere('code', $includeCode)))
             ->orderBy('sort_order')
             ->get()
-            ->mapWithKeys(fn (self $difficulty): array => [$difficulty->code => $difficulty->translate('en')?->name ?? $difficulty->code])
+            ->mapWithKeys(fn (self $difficulty): array => [$difficulty->code => $difficulty->translate(app()->getLocale())?->name ?? $difficulty->code])
             ->all();
     }
 }

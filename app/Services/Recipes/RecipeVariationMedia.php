@@ -22,6 +22,19 @@ use Throwable;
 
 class RecipeVariationMedia
 {
+    public function assertNotSourceMedia(Recipe $recipe, UploadedFile $file): void
+    {
+        foreach ($recipe->derivation->sourceRevision->media_snapshot ?? [] as $asset) {
+            if (filled($asset['file_path'] ?? null) && in_array($asset['source'] ?? null, ['local'], true)) {
+                foreach (['local', 'public'] as $disk) {
+                    if (Storage::disk($disk)->exists($asset['file_path']) && hash_equals(hash_file('sha256', $file->getRealPath()), hash_file('sha256', Storage::disk($disk)->path($asset['file_path'])))) {
+                        throw ValidationException::withMessages(['photo' => __('variations.source_media_forbidden')]);
+                    }
+                }
+            }
+        }
+    }
+
     public function upload(User $actor, Recipe $recipe, UploadedFile $file, string $role, ?int $stepId, array $alt, bool $confirmed, string $version): Media
     {
         Validator::make(compact('role', 'alt', 'confirmed', 'file'), [
@@ -36,15 +49,7 @@ class RecipeVariationMedia
                 $recipe = Recipe::query()->whereKey($recipe->id)->lockForUpdate()->firstOrFail();
                 Gate::forUser($actor)->authorize('editVariation', $recipe);
                 $this->assertVersion($recipe, $version);
-                foreach ($recipe->derivation->sourceRevision->media_snapshot ?? [] as $asset) {
-                    if (filled($asset['file_path'] ?? null) && in_array($asset['source'] ?? null, ['local'], true)) {
-                        foreach (['local', 'public'] as $disk) {
-                            if (Storage::disk($disk)->exists($asset['file_path']) && hash_equals(hash_file('sha256', $file->getRealPath()), hash_file('sha256', Storage::disk($disk)->path($asset['file_path'])))) {
-                                throw ValidationException::withMessages(['photo' => __('variations.source_media_forbidden')]);
-                            }
-                        }
-                    }
-                }
+                $this->assertNotSourceMedia($recipe, $file);
                 $translations = ['en' => ['alt_text' => $alt['en']], 'el' => ['alt_text' => $alt['el']]];
                 if ($role === 'step') {
                     $step = $recipe->steps()->findOrFail($stepId);

@@ -1,0 +1,24 @@
+{
+    "seed_ingredients": 760,
+    "seed_groups": 16,
+    "database_ingredients": 760,
+    "database_groups": 16,
+    "missing_seed_codes": 0,
+    "without_public_primary_photo": 760,
+    "en": {
+        "missing_name": 0,
+        "missing_slug": 0,
+        "missing_description": 760,
+        "missing_culinary_uses": 760,
+        "missing_preparation_tips": 760,
+        "missing_storage_tips": 760
+    },
+    "el": {
+        "missing_name": 0,
+        "missing_slug": 0,
+        "missing_description": 760,
+        "missing_culinary_uses": 760,
+        "missing_preparation_tips": 760,
+        "missing_storage_tips": 760
+    }
+}

@@ -1,0 +1,1622 @@
+[
+  {
+    "path": "/en",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "My Kitchen | Good food for real life",
+    "h1": 1,
+    "overflow": false,
+    "wide": [
+      "A.",
+      "SPAN.home-category-circle",
+      "SPAN.",
+      "BUTTON.category-button ",
+      "SPAN.category-count",
+      "BUTTON.category-button "
+    ],
+    "canonical": "http://127.0.0.1:8019/en",
+    "structured": [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "My Kitchen",
+        "url": "http://127.0.0.1:8019/en",
+        "inLanguage": "en"
+      }
+    ],
+    "vitals": {
+      "lcp": 2728,
+      "cls": 0.0028702116531258083
+    },
+    "ttfb": 1253.8000000002794,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/ingredients",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "Ingredient Encyclopedia | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [
+      "A.",
+      "A.",
+      "A.",
+      "A.",
+      "A.",
+      "A."
+    ],
+    "canonical": "http://127.0.0.1:8019/en/ingredients",
+    "structured": [],
+    "vitals": {
+      "lcp": 1060,
+      "cls": 0
+    },
+    "ttfb": 870.1999999997206,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/ingredients/salmon",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "Salmon | Ingredient Encyclopedia | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/ingredients/salmon",
+    "structured": [
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "DefinedTerm",
+          "name": "Salmon",
+          "url": "http://127.0.0.1:8019/en/ingredients/salmon",
+          "inDefinedTermSet": "http://127.0.0.1:8019/en/ingredients"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "http://127.0.0.1:8019/en"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Ingredient Encyclopedia",
+              "item": "http://127.0.0.1:8019/en/ingredients"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Salmon",
+              "item": "http://127.0.0.1:8019/en/ingredients/salmon"
+            }
+          ]
+        }
+      ]
+    ],
+    "vitals": {
+      "lcp": 1348,
+      "cls": 0
+    },
+    "ttfb": 681.1000000000931,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/recipes/crispy-chickpeas-herby-yogurt",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "Crispy chickpeas &amp; herby yogurt | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/recipes/crispy-chickpeas-herby-yogurt",
+    "structured": [
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "Recipe",
+          "@id": "http://127.0.0.1:8019/en/recipes/crispy-chickpeas-herby-yogurt#recipe",
+          "url": "http://127.0.0.1:8019/en/recipes/crispy-chickpeas-herby-yogurt",
+          "inLanguage": "en",
+          "name": "Crispy chickpeas & herby yogurt",
+          "description": "A lemony, crunchy bowl that turns a tin of chickpeas into dinner worth sitting down for.",
+          "image": [
+            "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1400&q=85"
+          ],
+          "author": {
+            "@type": "Person",
+            "name": "Chero"
+          },
+          "datePublished": "2026-11-03T21:05:59+00:00",
+          "dateModified": "2026-11-03T21:05:59+00:00",
+          "prepTime": "PT10M",
+          "cookTime": "PT25M",
+          "totalTime": "PT35M",
+          "recipeYield": "2",
+          "recipeCategory": "Legume Dishes",
+          "recipeIngredient": [
+            "2 tins of chickpeas, drained and dried",
+            "2 tbsp olive oil",
+            "1 tsp smoked paprika",
+            "200 g Greek yogurt, thick",
+            "1 lemon, zested and juiced",
+            "A handful each of dill and parsley"
+          ],
+          "recipeInstructions": [
+            {
+              "@type": "HowToStep",
+              "position": 1,
+              "text": "Heat the oven to 220°C / 425°F. Toss the chickpeas with oil, paprika and salt."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 2,
+              "text": "Roast for 25 minutes, shaking the tray once, until crisp and deeply golden."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 3,
+              "text": "Stir the yogurt with lemon zest, a squeeze of juice and chopped herbs. Spoon onto plates and tumble over the warm chickpeas."
+            }
+          ]
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "http://127.0.0.1:8019/en"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Legume Dishes",
+              "item": "http://127.0.0.1:8019/en/categories/legume-dishes"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Crispy chickpeas & herby yogurt",
+              "item": "http://127.0.0.1:8019/en/recipes/crispy-chickpeas-herby-yogurt"
+            }
+          ]
+        }
+      ]
+    ],
+    "vitals": {
+      "lcp": 2048,
+      "cls": 0
+    },
+    "ttfb": 1127.7000000001863,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/what-can-i-cook",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "What Can I Cook? | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/what-can-i-cook",
+    "structured": [],
+    "vitals": {
+      "lcp": 1020,
+      "cls": 0
+    },
+    "ttfb": 903.2000000001863,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "My Kitchen | Good food for real life",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en",
+    "structured": [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "My Kitchen",
+        "url": "http://127.0.0.1:8019/en",
+        "inLanguage": "en"
+      }
+    ],
+    "vitals": {
+      "lcp": 1864,
+      "cls": 0
+    },
+    "ttfb": 1526.6999999997206,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/ingredients",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "Ingredient Encyclopedia | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/ingredients",
+    "structured": [],
+    "vitals": {
+      "lcp": 1680,
+      "cls": 0
+    },
+    "ttfb": 752.3999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/ingredients/salmon",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "Salmon | Ingredient Encyclopedia | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/ingredients/salmon",
+    "structured": [
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "DefinedTerm",
+          "name": "Salmon",
+          "url": "http://127.0.0.1:8019/en/ingredients/salmon",
+          "inDefinedTermSet": "http://127.0.0.1:8019/en/ingredients"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "http://127.0.0.1:8019/en"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Ingredient Encyclopedia",
+              "item": "http://127.0.0.1:8019/en/ingredients"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Salmon",
+              "item": "http://127.0.0.1:8019/en/ingredients/salmon"
+            }
+          ]
+        }
+      ]
+    ],
+    "vitals": {
+      "lcp": 1028,
+      "cls": 0
+    },
+    "ttfb": 820.9000000003725,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/recipes/crispy-chickpeas-herby-yogurt",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "Crispy chickpeas &amp; herby yogurt | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/recipes/crispy-chickpeas-herby-yogurt",
+    "structured": [
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "Recipe",
+          "@id": "http://127.0.0.1:8019/en/recipes/crispy-chickpeas-herby-yogurt#recipe",
+          "url": "http://127.0.0.1:8019/en/recipes/crispy-chickpeas-herby-yogurt",
+          "inLanguage": "en",
+          "name": "Crispy chickpeas & herby yogurt",
+          "description": "A lemony, crunchy bowl that turns a tin of chickpeas into dinner worth sitting down for.",
+          "image": [
+            "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1400&q=85"
+          ],
+          "author": {
+            "@type": "Person",
+            "name": "Chero"
+          },
+          "datePublished": "2026-11-03T21:05:59+00:00",
+          "dateModified": "2026-11-03T21:05:59+00:00",
+          "prepTime": "PT10M",
+          "cookTime": "PT25M",
+          "totalTime": "PT35M",
+          "recipeYield": "2",
+          "recipeCategory": "Legume Dishes",
+          "recipeIngredient": [
+            "2 tins of chickpeas, drained and dried",
+            "2 tbsp olive oil",
+            "1 tsp smoked paprika",
+            "200 g Greek yogurt, thick",
+            "1 lemon, zested and juiced",
+            "A handful each of dill and parsley"
+          ],
+          "recipeInstructions": [
+            {
+              "@type": "HowToStep",
+              "position": 1,
+              "text": "Heat the oven to 220°C / 425°F. Toss the chickpeas with oil, paprika and salt."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 2,
+              "text": "Roast for 25 minutes, shaking the tray once, until crisp and deeply golden."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 3,
+              "text": "Stir the yogurt with lemon zest, a squeeze of juice and chopped herbs. Spoon onto plates and tumble over the warm chickpeas."
+            }
+          ]
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "http://127.0.0.1:8019/en"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Legume Dishes",
+              "item": "http://127.0.0.1:8019/en/categories/legume-dishes"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Crispy chickpeas & herby yogurt",
+              "item": "http://127.0.0.1:8019/en/recipes/crispy-chickpeas-herby-yogurt"
+            }
+          ]
+        }
+      ]
+    ],
+    "vitals": {
+      "lcp": 2064,
+      "cls": 0.0016704963589891976
+    },
+    "ttfb": 1014.2000000001863,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/what-can-i-cook",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "What Can I Cook? | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/what-can-i-cook",
+    "structured": [],
+    "vitals": {
+      "lcp": 672,
+      "cls": 0
+    },
+    "ttfb": 488.1999999997206,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "My Kitchen | Καλό φαγητό για την καθημερινότητα",
+    "h1": 1,
+    "overflow": false,
+    "wide": [
+      "A.",
+      "SPAN.home-category-circle",
+      "SPAN.",
+      "BUTTON.category-button ",
+      "SPAN.category-count",
+      "BUTTON.category-button "
+    ],
+    "canonical": "http://127.0.0.1:8019/el",
+    "structured": [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "My Kitchen",
+        "url": "http://127.0.0.1:8019/el",
+        "inLanguage": "el"
+      }
+    ],
+    "vitals": {
+      "lcp": 1716,
+      "cls": 0.004132717163166013
+    },
+    "ttfb": 1327,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/ingredients",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Εγκυκλοπαίδεια Υλικών | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [
+      "A.",
+      "A.",
+      "A.",
+      "A.",
+      "A.",
+      "A."
+    ],
+    "canonical": "http://127.0.0.1:8019/el/ingredients",
+    "structured": [],
+    "vitals": {
+      "lcp": 932,
+      "cls": 0.034705963269134305
+    },
+    "ttfb": 633.6000000000931,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/ingredients/solomos",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Σολομός | Εγκυκλοπαίδεια Υλικών | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/ingredients/solomos",
+    "structured": [
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "DefinedTerm",
+          "name": "Σολομός",
+          "url": "http://127.0.0.1:8019/el/ingredients/solomos",
+          "inDefinedTermSet": "http://127.0.0.1:8019/el/ingredients"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Αρχική",
+              "item": "http://127.0.0.1:8019/el"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Εγκυκλοπαίδεια Υλικών",
+              "item": "http://127.0.0.1:8019/el/ingredients"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Σολομός",
+              "item": "http://127.0.0.1:8019/el/ingredients/solomos"
+            }
+          ]
+        }
+      ]
+    ],
+    "vitals": {
+      "lcp": 1132,
+      "cls": 0
+    },
+    "ttfb": 974.7000000001863,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/recipes/crispy-chickpeas-herby-yogurt-el",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Τραγανά ρεβίθια με γιαούρτι και μυρωδικά | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/recipes/crispy-chickpeas-herby-yogurt-el",
+    "structured": [
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "Recipe",
+          "@id": "http://127.0.0.1:8019/el/recipes/crispy-chickpeas-herby-yogurt-el#recipe",
+          "url": "http://127.0.0.1:8019/el/recipes/crispy-chickpeas-herby-yogurt-el",
+          "inLanguage": "el",
+          "name": "Τραγανά ρεβίθια με γιαούρτι και μυρωδικά",
+          "description": "Ένα λεμονάτο, τραγανό πιάτο που μετατρέπει τα ρεβίθια σε ένα δείπνο για να απολαύσετε με την ησυχία σας.",
+          "image": [
+            "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1400&q=85"
+          ],
+          "author": {
+            "@type": "Person",
+            "name": "Chero"
+          },
+          "datePublished": "2026-11-03T21:05:59+00:00",
+          "dateModified": "2026-11-03T21:05:59+00:00",
+          "prepTime": "PT10M",
+          "cookTime": "PT25M",
+          "totalTime": "PT35M",
+          "recipeYield": "2",
+          "recipeCategory": "Φαγητά με Όσπρια",
+          "recipeIngredient": [
+            "2 κονσέρβες ρεβίθια, στραγγισμένα και στεγνωμένα",
+            "2 κ.σ. ελαιόλαδο",
+            "1 κ.γ. καπνιστή πάπρικα",
+            "200 γρ. ελληνικό γιαούρτι, στραγγιστό",
+            "1 λεμόνι, ξύσμα και χυμός",
+            "Μια χούφτα από άνηθος και μαϊντανός"
+          ],
+          "recipeInstructions": [
+            {
+              "@type": "HowToStep",
+              "position": 1,
+              "text": "Ζεστάνετε το φούρνο στους 220°C. Ανακατέψτε τα ρεβίθια με λάδι, πάπρικα και αλάτι."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 2,
+              "text": "Ψήστε για 25 λεπτά, κουνώντας το ταψί μία φορά, μέχρι να γίνουν τραγανά και βαθιά χρυσαφένια."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 3,
+              "text": "Ανακατέψτε το γιαούρτι με ξύσμα λεμονιού, λίγο χυμό και ψιλοκομμένα μυρωδικά. Σερβίρετε στα πιάτα και ρίξτε από πάνω τα ζεστά ρεβίθια."
+            }
+          ]
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Αρχική",
+              "item": "http://127.0.0.1:8019/el"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Φαγητά με Όσπρια",
+              "item": "http://127.0.0.1:8019/el/categories/faghita-me-ospria"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Τραγανά ρεβίθια με γιαούρτι και μυρωδικά",
+              "item": "http://127.0.0.1:8019/el/recipes/crispy-chickpeas-herby-yogurt-el"
+            }
+          ]
+        }
+      ]
+    ],
+    "vitals": {
+      "lcp": 2080,
+      "cls": 0
+    },
+    "ttfb": 1318.3000000002794,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/what-can-i-cook",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Τι να μαγειρέψω; | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/what-can-i-cook",
+    "structured": [],
+    "vitals": {
+      "lcp": 580,
+      "cls": 0
+    },
+    "ttfb": 447.20000000018626,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "My Kitchen | Καλό φαγητό για την καθημερινότητα",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el",
+    "structured": [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "My Kitchen",
+        "url": "http://127.0.0.1:8019/el",
+        "inLanguage": "el"
+      }
+    ],
+    "vitals": {
+      "lcp": 1108,
+      "cls": 0
+    },
+    "ttfb": 614.8999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/ingredients",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Εγκυκλοπαίδεια Υλικών | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/ingredients",
+    "structured": [],
+    "vitals": {
+      "lcp": 756,
+      "cls": 0
+    },
+    "ttfb": 557,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/ingredients/solomos",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Σολομός | Εγκυκλοπαίδεια Υλικών | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/ingredients/solomos",
+    "structured": [
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "DefinedTerm",
+          "name": "Σολομός",
+          "url": "http://127.0.0.1:8019/el/ingredients/solomos",
+          "inDefinedTermSet": "http://127.0.0.1:8019/el/ingredients"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Αρχική",
+              "item": "http://127.0.0.1:8019/el"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Εγκυκλοπαίδεια Υλικών",
+              "item": "http://127.0.0.1:8019/el/ingredients"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Σολομός",
+              "item": "http://127.0.0.1:8019/el/ingredients/solomos"
+            }
+          ]
+        }
+      ]
+    ],
+    "vitals": {
+      "lcp": 580,
+      "cls": 0
+    },
+    "ttfb": 439.3000000002794,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/recipes/crispy-chickpeas-herby-yogurt-el",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Τραγανά ρεβίθια με γιαούρτι και μυρωδικά | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/recipes/crispy-chickpeas-herby-yogurt-el",
+    "structured": [
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "Recipe",
+          "@id": "http://127.0.0.1:8019/el/recipes/crispy-chickpeas-herby-yogurt-el#recipe",
+          "url": "http://127.0.0.1:8019/el/recipes/crispy-chickpeas-herby-yogurt-el",
+          "inLanguage": "el",
+          "name": "Τραγανά ρεβίθια με γιαούρτι και μυρωδικά",
+          "description": "Ένα λεμονάτο, τραγανό πιάτο που μετατρέπει τα ρεβίθια σε ένα δείπνο για να απολαύσετε με την ησυχία σας.",
+          "image": [
+            "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1400&q=85"
+          ],
+          "author": {
+            "@type": "Person",
+            "name": "Chero"
+          },
+          "datePublished": "2026-11-03T21:05:59+00:00",
+          "dateModified": "2026-11-03T21:05:59+00:00",
+          "prepTime": "PT10M",
+          "cookTime": "PT25M",
+          "totalTime": "PT35M",
+          "recipeYield": "2",
+          "recipeCategory": "Φαγητά με Όσπρια",
+          "recipeIngredient": [
+            "2 κονσέρβες ρεβίθια, στραγγισμένα και στεγνωμένα",
+            "2 κ.σ. ελαιόλαδο",
+            "1 κ.γ. καπνιστή πάπρικα",
+            "200 γρ. ελληνικό γιαούρτι, στραγγιστό",
+            "1 λεμόνι, ξύσμα και χυμός",
+            "Μια χούφτα από άνηθος και μαϊντανός"
+          ],
+          "recipeInstructions": [
+            {
+              "@type": "HowToStep",
+              "position": 1,
+              "text": "Ζεστάνετε το φούρνο στους 220°C. Ανακατέψτε τα ρεβίθια με λάδι, πάπρικα και αλάτι."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 2,
+              "text": "Ψήστε για 25 λεπτά, κουνώντας το ταψί μία φορά, μέχρι να γίνουν τραγανά και βαθιά χρυσαφένια."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 3,
+              "text": "Ανακατέψτε το γιαούρτι με ξύσμα λεμονιού, λίγο χυμό και ψιλοκομμένα μυρωδικά. Σερβίρετε στα πιάτα και ρίξτε από πάνω τα ζεστά ρεβίθια."
+            }
+          ]
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Αρχική",
+              "item": "http://127.0.0.1:8019/el"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Φαγητά με Όσπρια",
+              "item": "http://127.0.0.1:8019/el/categories/faghita-me-ospria"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Τραγανά ρεβίθια με γιαούρτι και μυρωδικά",
+              "item": "http://127.0.0.1:8019/el/recipes/crispy-chickpeas-herby-yogurt-el"
+            }
+          ]
+        }
+      ]
+    ],
+    "vitals": {
+      "lcp": 908,
+      "cls": 0
+    },
+    "ttfb": 678.7000000001863,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/what-can-i-cook",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Τι να μαγειρέψω; | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/what-can-i-cook",
+    "structured": [],
+    "vitals": {
+      "lcp": 580,
+      "cls": 0
+    },
+    "ttfb": 421.60000000009313,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/my-kitchen",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "My Kitchen | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [
+      "A.home-day",
+      "TIME.",
+      "SPAN.",
+      "STRONG.",
+      "SPAN.",
+      "A.home-day"
+    ],
+    "canonical": "http://127.0.0.1:8019/en/my-kitchen",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 808,
+      "cls": 0
+    },
+    "ttfb": 677.1999999997206,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/saved-recipes",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "My Recipe Box | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/saved-recipes",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 652,
+      "cls": 0
+    },
+    "ttfb": 546.3999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/shared-with-me",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "Shared with me | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/shared-with-me",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 592,
+      "cls": 0
+    },
+    "ttfb": 500.40000000037253,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/my-recipes",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "My Recipes | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/my-recipes",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 612,
+      "cls": 0
+    },
+    "ttfb": 495.79999999981374,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/planner",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "Meal planner | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/planner",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 676,
+      "cls": 0
+    },
+    "ttfb": 545.8999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/planner/shopping",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "Shopping list | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/planner/shopping",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 596,
+      "cls": 0
+    },
+    "ttfb": 492.70000000018626,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/households",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "Households | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/households",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 672,
+      "cls": 0
+    },
+    "ttfb": 536.1999999997206,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/households/1",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "Households | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/households/1",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 628,
+      "cls": 0
+    },
+    "ttfb": 536.3999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/recipe-studio/create",
+    "width": 390,
+    "status": 200,
+    "lang": "en",
+    "title": "Your Recipe Studio | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [
+      "BUTTON.fi-tabs-item",
+      "SPAN.fi-tabs-item-label",
+      "BUTTON.fi-tabs-item",
+      "SPAN.fi-tabs-item-label"
+    ],
+    "canonical": "http://127.0.0.1:8019/en/recipe-studio/create",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 1232,
+      "cls": 0.19323125531656338
+    },
+    "ttfb": 1048.7999999998137,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/my-kitchen",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "My Kitchen | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/my-kitchen",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 816,
+      "cls": 0
+    },
+    "ttfb": 644.8000000002794,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/saved-recipes",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "My Recipe Box | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/saved-recipes",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 644,
+      "cls": 0
+    },
+    "ttfb": 524.3999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/shared-with-me",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "Shared with me | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/shared-with-me",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 672,
+      "cls": 0
+    },
+    "ttfb": 561.5,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/my-recipes",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "My Recipes | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/my-recipes",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 804,
+      "cls": 0
+    },
+    "ttfb": 678.6000000000931,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/planner",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "Meal planner | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/planner",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 632,
+      "cls": 0
+    },
+    "ttfb": 507.70000000018626,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/planner/shopping",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "Shopping list | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/planner/shopping",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 1052,
+      "cls": 0
+    },
+    "ttfb": 906.5,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/households",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "Households | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/households",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 808,
+      "cls": 0
+    },
+    "ttfb": 674.7000000001863,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/households/1",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "Households | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/households/1",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 696,
+      "cls": 0
+    },
+    "ttfb": 561.8999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/en/recipe-studio/create",
+    "width": 1440,
+    "status": 200,
+    "lang": "en",
+    "title": "Your Recipe Studio | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/en/recipe-studio/create",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 972,
+      "cls": 0.41588888888888886
+    },
+    "ttfb": 762.8999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/my-kitchen",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Η κουζίνα μου | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [
+      "A.home-day",
+      "TIME.",
+      "SPAN.",
+      "STRONG.",
+      "SPAN.",
+      "A.home-day"
+    ],
+    "canonical": "http://127.0.0.1:8019/el/my-kitchen",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 776,
+      "cls": 0
+    },
+    "ttfb": 512.7999999998137,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/saved-recipes",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Οι αποθηκευμένες συνταγές μου | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/saved-recipes",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 652,
+      "cls": 0
+    },
+    "ttfb": 539.1000000000931,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/shared-with-me",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Κοινοποιημένες σε μένα | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/shared-with-me",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 576,
+      "cls": 0
+    },
+    "ttfb": 499.1999999997206,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/my-recipes",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Οι συνταγές μου | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/my-recipes",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 840,
+      "cls": 0
+    },
+    "ttfb": 723,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/planner",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Πρόγραμμα γευμάτων | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/planner",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 876,
+      "cls": 0
+    },
+    "ttfb": 744,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/planner/shopping",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Λίστα αγορών | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/planner/shopping",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 2324,
+      "cls": 0
+    },
+    "ttfb": 625.5999999996275,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/households",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Νοικοκυριά | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/households",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 712,
+      "cls": 0
+    },
+    "ttfb": 584.3999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/households/1",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Νοικοκυριά | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/households/1",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 852,
+      "cls": 0
+    },
+    "ttfb": 681.6000000000931,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/recipe-studio/create",
+    "width": 390,
+    "status": 200,
+    "lang": "el",
+    "title": "Το εργαστήρι συνταγών σου | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [
+      "BUTTON.fi-tabs-item",
+      "SPAN.fi-tabs-item-label",
+      "BUTTON.fi-tabs-item",
+      "SPAN.fi-tabs-item-label"
+    ],
+    "canonical": "http://127.0.0.1:8019/el/recipe-studio/create",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 872,
+      "cls": 0.17293109733868028
+    },
+    "ttfb": 706.3000000002794,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/my-kitchen",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Η κουζίνα μου | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/my-kitchen",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 824,
+      "cls": 0
+    },
+    "ttfb": 646.5999999996275,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/saved-recipes",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Οι αποθηκευμένες συνταγές μου | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/saved-recipes",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 768,
+      "cls": 0
+    },
+    "ttfb": 614.3999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/shared-with-me",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Κοινοποιημένες σε μένα | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/shared-with-me",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 708,
+      "cls": 0
+    },
+    "ttfb": 612.8000000002794,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/my-recipes",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Οι συνταγές μου | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/my-recipes",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 688,
+      "cls": 0
+    },
+    "ttfb": 536.8999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/planner",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Πρόγραμμα γευμάτων | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/planner",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 908,
+      "cls": 0
+    },
+    "ttfb": 736.3999999999069,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/planner/shopping",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Λίστα αγορών | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/planner/shopping",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 852,
+      "cls": 0
+    },
+    "ttfb": 675.1000000000931,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/households",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Νοικοκυριά | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/households",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 780,
+      "cls": 0
+    },
+    "ttfb": 594.2999999998137,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/households/1",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Νοικοκυριά | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/households/1",
+    "robots": "noindex, nofollow",
+    "structured": [],
+    "vitals": {
+      "lcp": 716,
+      "cls": 0
+    },
+    "ttfb": 600.6999999997206,
+    "errors": [],
+    "violations": []
+  },
+  {
+    "path": "/el/recipe-studio/create",
+    "width": 1440,
+    "status": 200,
+    "lang": "el",
+    "title": "Το εργαστήρι συνταγών σου | My Kitchen",
+    "h1": 1,
+    "overflow": false,
+    "wide": [],
+    "canonical": "http://127.0.0.1:8019/el/recipe-studio/create",
+    "robots": "noindex, nofollow, noarchive",
+    "structured": [],
+    "vitals": {
+      "lcp": 1148,
+      "cls": 0.41588888888888886
+    },
+    "ttfb": 961.9000000003725,
+    "errors": [],
+    "violations": []
+  }
+]

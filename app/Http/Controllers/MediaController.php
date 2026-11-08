@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Media;
 use App\Models\Recipe;
+use App\Models\RecipeRevision;
+use App\Services\CookingSessionService;
 use App\Services\RecipeAccessService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -40,6 +42,17 @@ class MediaController extends Controller
 
         $allowed = $recipes->first(fn (Recipe $recipe): bool => ! $recipe->trashed() && $access->canView($user, $recipe));
 
+        if ($allowed === null && $user !== null) {
+            $revision = RecipeRevision::query()->whereHas('media', fn ($references) => $references->where('media_id', $media->id))
+                ->with('recipe')->get()->first(fn ($revision): bool => ! $revision->recipe->trashed() && $user->can('view', $revision));
+            $allowed = $revision?->recipe;
+        }
+
+        if ($allowed === null && $user !== null && app(CookingSessionService::class)->allowsMedia($user, $media)) {
+            return Storage::disk($media->disk)->response((string) $media->file_path, null, [
+                'Cache-Control' => 'private, no-store', 'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+            ]);
+        }
         abort_if($allowed === null, 404);
 
         $access->recordModerationAccess($user, $allowed, 'media');

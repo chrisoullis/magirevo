@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\RecipeRevisionStatus;
 use App\Models\Media;
 use App\Models\MediaTranslation;
 use App\Models\Recipe;
@@ -52,6 +53,13 @@ class RecipeMediaMetadata
         }
 
         $revisionId = (int) $recipe->current_revision_id;
+
+        if (! array_key_exists($revisionId, $this->snapshots) && $recipe->relationLoaded('currentRevision')) {
+            $revision = $recipe->currentRevision;
+            $this->snapshots[$revisionId] = $revision?->status === RecipeRevisionStatus::Published && $revision->media_snapshot !== null
+                ? collect($revision->media_snapshot ?? [])->keyBy(fn (array $asset): int => (int) $asset['media_id'])->all()
+                : null;
+        }
 
         if (! array_key_exists($revisionId, $this->snapshots)) {
             $raw = DB::table('recipe_revisions')->where('id', $revisionId)->where('status', 'published')->value('media_snapshot');

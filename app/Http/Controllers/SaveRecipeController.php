@@ -16,6 +16,6 @@ class SaveRecipeController extends Controller
 
         auth()->user()->favoriteRecipes()->toggle($recipe->id);
 
-        return back()->with('status', 'Your recipe box has been updated.');
+        return back()->with('status', __('homepage.recipe_box_updated'));
     }
 }

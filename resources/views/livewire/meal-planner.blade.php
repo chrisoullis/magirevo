@@ -1,4 +1,4 @@
-<div class="flex flex-col gap-6" @if ($household) wire:poll.30s @endif>
+<div class="kitchen-module planner-module flex flex-col gap-6" @if ($household) wire:poll.30s @endif>
     <header class="flex flex-col gap-2">
         @if ($household)
             <a class="text-link inline-flex min-h-11 items-center" href="{{ route('households.show', ['locale' => $locale, 'household' => $household->id], false) }}">&larr; {{ $household->name }}</a>
@@ -97,7 +97,7 @@
         </form>
     @endif
 
-    <div class="flex flex-col gap-4">
+    <div class="planner-week">
         @foreach ($days as $day)
             @php($dayEntries = $view->get($day->toDateString(), collect()))
             <section class="rounded border border-current/20 p-4" aria-labelledby="day-{{ $day->toDateString() }}" wire:key="day-{{ $day->toDateString() }}">
@@ -121,6 +121,13 @@
                                         <span class="text-sm font-semibold">{{ $item['consumed'] ? __('planner.batches.eaten') : __('planner.batches.leftover_badge') }}</span>
                                     @endif
                                     <span class="text-sm">{{ trans_choice('planner.servings_count', $item['servings']) }}@if ($item['notes']) &middot; {{ $item['notes'] }}@endif</span>
+                                    @if ($item['components'] ?? [])
+                                        <ul aria-label="{{ __('nested_planner.components') }}">
+                                            @foreach ($item['components'] as $component)
+                                                <li>{{ $component['title'] }}@if ($component['quantity'] !== null) · {{ $component['quantity'] }}@endif</li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
                                     @if ($item['substitutions'] !== [])
                                         <div class="text-sm">
                                             <strong>{{ __('planner.confirmed_substitutions') }}</strong>

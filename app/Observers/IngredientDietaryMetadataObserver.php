@@ -10,6 +10,7 @@ use App\Models\IngredientDietaryProfile;
 use App\Models\RecipeIngredient;
 use App\Models\RecipeRevision;
 use App\Services\DietaryClaimService;
+use App\Services\RecipeComponentInvalidationService;
 use App\Support\AppPermissions;
 use Illuminate\Database\Eloquent\Model;
 
@@ -76,7 +77,7 @@ class IngredientDietaryMetadataObserver
 
         // Live lines plus frozen in-review and published revisions, whose claims are checked against their payload.
         $revisionRecipeIds = RecipeRevision::query()
-            ->whereIn('status', [RecipeRevisionStatus::InReview->value, RecipeRevisionStatus::Published->value, RecipeRevisionStatus::Superseded->value])
+            ->whereIn('status', [RecipeRevisionStatus::InReview->value, RecipeRevisionStatus::Published->value, RecipeRevisionStatus::Superseded->value, 'retained'])
             ->where(function ($query) use ($affectedIngredientIds): void {
                 foreach ($affectedIngredientIds as $id) {
                     $query->orWhereRaw('payload->\'ingredients\' @> ?::jsonb', [json_encode([['ingredient_id' => $id]])]);
@@ -89,9 +90,9 @@ class IngredientDietaryMetadataObserver
             ->pluck('recipe_id')
             ->concat($revisionRecipeIds)
             ->unique()
-            ->each(fn (int $recipeId) => $this->claims->scheduleRevalidation(
-                $recipeId,
-                'Ingredient composition, animal-origin, allergen or dietary verification metadata changed.'
-            ));
+            ->each(function (int $recipeId): void {
+                $this->claims->scheduleRevalidation($recipeId, 'Ingredient composition, animal-origin, allergen or dietary verification metadata changed.');
+                app(RecipeComponentInvalidationService::class)->schedule($recipeId);
+            });
     }
 }

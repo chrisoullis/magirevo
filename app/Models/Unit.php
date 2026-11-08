@@ -54,6 +54,13 @@ class Unit extends Model
 
     public function isInUse(): bool
     {
-        return $this->recipeIngredients()->exists() || $this->ingredients()->exists();
+        return $this->recipeIngredients()->exists()
+            || $this->ingredients()->exists()
+            || RecipeYield::query()->where('unit_id', $this->id)->exists()
+            || RecipeIngredient::query()->where('prepared_unit_id', $this->id)->exists()
+            || RecipeRevision::query()->where('status', '<>', 'draft')
+                ->where(fn ($query) => $query->whereRaw("jsonb_exists(COALESCE(payload->'units', '{}'::jsonb), ?)", [(string) $this->id])
+                    ->orWhereRaw("payload->'ingredients' @> ?::jsonb", [json_encode([['unit_id' => $this->id]])])
+                    ->orWhereRaw("payload->'ingredients' @> ?::jsonb", [json_encode([['prepared_unit_id' => $this->id]])]))->exists();
     }
 }

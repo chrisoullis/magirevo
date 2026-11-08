@@ -55,7 +55,16 @@ class RecipeAccessService
 
     public function canView(?User $user, Recipe $recipe): bool
     {
-        if ($recipe->isPubliclyAccessible()) {
+        return $this->canViewDirect($user, $recipe)
+            && app(RecipeComponentResolver::class)->canResolve($recipe, $user);
+    }
+
+    public function canViewDirect(?User $user, Recipe $recipe): bool
+    {
+        if ($recipe->visibility === RecipeVisibility::Public
+            && $recipe->status === RecipeStatus::Published->value
+            && $recipe->published_at !== null && ! $recipe->published_at->isFuture()
+            && ! $recipe->trashed()) {
             return true;
         }
 

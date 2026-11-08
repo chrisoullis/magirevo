@@ -9,7 +9,7 @@ class RecipeVariationController extends Controller
 {
     public function index(string $locale)
     {
-        abort_unless(config('recipe-variations.enabled'), 404);
+        abort_unless(config('recipe-variations.enabled') || Gate::allows('create', Recipe::class), 404);
 
         return response()->view('recipes.personal', ['locale' => $locale, 'alternateUrls' => collect(['en', 'el'])->mapWithKeys(fn ($language) => [$language => route('recipes.personal', ['locale' => $language], false)])->all()])
             ->header('Cache-Control', 'private, no-store')->header('X-Robots-Tag', 'noindex, nofollow, noarchive');

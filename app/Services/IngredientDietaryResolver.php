@@ -6,6 +6,7 @@ use App\Enums\DietaryCompatibility;
 use App\Enums\IngredientCompositionStatus;
 use App\Enums\IngredientOriginClassification;
 use App\Enums\TagClassification;
+use App\Models\IngredientAllergenAssessment;
 use App\Models\IngredientComponent;
 use App\Models\IngredientDietaryAssessment;
 use App\Models\IngredientDietaryProfile;
@@ -31,6 +32,10 @@ class IngredientDietaryResolver
             return DietaryCompatibility::Unknown;
         }
 
+        if (app(RecipeComponentDietaryTraversal::class)->inspect($recipe)['unresolved']) {
+            return DietaryCompatibility::Unknown;
+        }
+
         $outcomes = $this->ingredientIds($recipe)
             ->map(fn (int $ingredientId): DietaryCompatibility => $this->resolveIngredient($ingredientId, $tag, []));
 
@@ -53,7 +58,9 @@ class IngredientDietaryResolver
             return ['No dietary resolver is available for this claim type.'];
         }
 
-        $warnings = [];
+        $warnings = app(RecipeComponentDietaryTraversal::class)->inspect($recipe)['unresolved']
+            ? ['A recipe component is unavailable or unresolved; dietary verification is unknown.']
+            : [];
 
         foreach ($this->ingredientIds($recipe) as $ingredientId) {
             $this->collectWarnings((int) $ingredientId, $tag, [], $warnings);
@@ -84,11 +91,7 @@ class IngredientDietaryResolver
      */
     private function ingredientIds(Recipe|RecipeRevision $subject): Collection
     {
-        $ids = $subject instanceof RecipeRevision
-            ? collect($subject->payload['ingredients'] ?? [])->pluck('ingredient_id')
-            : $subject->recipeIngredients()->pluck('ingredient_id');
-
-        return $ids->map(fn ($id): int => (int) $id)->unique()->values();
+        return collect(app(RecipeComponentDietaryTraversal::class)->inspect($subject)['ids']);
     }
 
     private function resolveIngredient(int $ingredientId, Tag $tag, array $seen): DietaryCompatibility

@@ -43,7 +43,7 @@ class RecipePublishingService
             $this->media->syncStorage($recipe);
 
             return $recipe;
-        });
+        }, 5);
     }
 
     /**
@@ -64,7 +64,7 @@ class RecipePublishingService
             Gate::forUser($reviewer)->authorize('approve', $recipe);
 
             $this->assertTransitionAllowed($recipe, RecipeStatus::Published->value);
-            $this->assertPublishable($recipe);
+            $this->assertPublishable($recipe, $reviewer);
 
             $recipe->forceFill([
                 'reviewed_by' => $reviewer->getKey(),
@@ -74,7 +74,7 @@ class RecipePublishingService
 
             $this->publish($recipe);
             $changed = true;
-        });
+        }, 5);
 
         if ($changed) {
             $this->audit->record('recipe_approved', ['recipe_id' => $recipe->getKey(), 'author_id' => $recipe->author_id]);
@@ -136,7 +136,7 @@ class RecipePublishingService
     {
         Gate::forUser($actor)->authorize('submitForReview', $recipe);
 
-        $this->assertPublishable($recipe);
+        $this->assertPublishable($recipe, $actor);
 
         $limited = ! $actor->can(AppPermissions::RECIPES_PUBLISH);
         $key = 'recipe-submission:'.$actor->getKey();
@@ -186,7 +186,7 @@ class RecipePublishingService
         DB::transaction(function () use ($recipe): void {
             $this->lock($recipe);
             $this->transition($recipe, RecipeStatus::Draft->value);
-        });
+        }, 5);
 
         $this->audit->record('recipe_withdrawn', ['recipe_id' => $recipe->getKey()]);
 
@@ -306,56 +306,32 @@ class RecipePublishingService
     /**
      * The single gate for publication: complete English and Greek content, ingredients, steps and a cover.
      */
-    public function assertPublishable(Recipe $recipe): void
+    public function assertPublishable(Recipe $recipe, ?User $actor = null): void
     {
         $this->assertVariationPublicationDisabled($recipe);
 
         $this->validateTranslatedContent($recipe);
-        $this->validateCompleteness($recipe);
+        $this->validateCompleteness($recipe, $actor);
     }
 
-    public function validateCompleteness(Recipe $recipe): void
+    public function validateCompleteness(Recipe $recipe, ?User $actor = null): void
     {
-        $errors = [];
-
-        $steps = $recipe->steps()->with('translations')->get();
-        $locales = config('translatable.locales');
-
-        $ingredientLines = $recipe->recipeIngredients()->with('ingredient.translations')->get();
-
-        if ($ingredientLines->isEmpty()) {
-            $errors['ingredients'] = 'Add at least one ingredient before publishing.';
-        } elseif ($ingredientLines->contains(fn ($line): bool => collect($locales)
-            ->contains(fn (string $locale): bool => blank($line->ingredient?->getTranslation($locale, false)?->name)))) {
-            $errors['ingredients'] = 'Every ingredient needs an English and Greek name before publishing.';
-        }
-
-        $stepsAreComplete = $steps->isNotEmpty() && $steps->every(fn ($step): bool => collect(config('translatable.locales'))
-            ->every(fn (string $locale): bool => filled($step->getTranslation($locale, false)?->instruction)));
-
-        if (! $stepsAreComplete) {
-            $errors['steps'] = 'Add at least one cooking step with English and Greek instructions before publishing.';
-        }
-
-        if (collect($locales)->contains(fn (string $locale): bool => blank($recipe->getTranslation($locale, false)?->summary))) {
-            $errors['summary'] = 'English and Greek summaries are required before publishing.';
-        }
-
-        if (! $recipe->media()->wherePivot('role', 'cover')->exists()) {
-            $errors['media'] = 'Upload a cover image before publishing.';
-        }
-
-        if ($recipe->categories()->doesntExist()) {
-            $errors['categories'] = 'Choose at least one category before publishing.';
-        }
-
-        if ($errors !== []) {
-            throw ValidationException::withMessages($errors);
-        }
+        app(RecipeRevisionValidator::class)->assertSubmittable(
+            app(RecipeRevisionSnapshotter::class)->normalize(app(RecipeRevisionSnapshotter::class)->serialize($recipe->id)),
+            $recipe->id,
+            $actor ?? Auth::user(),
+            true,
+        );
     }
 
     public function validateForPublishing(Recipe $recipe): void
     {
+        if ($recipe->exists) {
+            app(RecipeComponentResolver::class)->assertValidPayload(
+                app(RecipeRevisionSnapshotter::class)->serialize($recipe->id), $recipe->id, Auth::user(), true,
+            );
+        }
+
         if ($recipe->derived_from_recipe_id !== null && ! $recipe->currentRevision()->where('recipe_id', $recipe->id)->where('status', 'published')->whereNotNull('publication_context')->exists()) {
             $this->assertVariationPublicationDisabled($recipe);
         }
@@ -425,14 +401,14 @@ class RecipePublishingService
             $translation = $recipe->getTranslation($locale, false);
 
             if (blank($translation?->title) || blank($translation?->slug)) {
-                $errors['translations'] = 'English and Greek titles and slugs are required before publishing a recipe.';
+                $errors['translations'] = __('studio.publication.english_and_greek_titles_and_slugs_are_required_before');
 
                 break;
             }
         }
 
         if (! is_numeric($recipe->base_servings) || (float) $recipe->base_servings <= 0) {
-            $errors['base_servings'] = 'Base servings must be greater than zero.';
+            $errors['base_servings'] = __('studio.publication.base_servings_must_be_greater_than_zero');
         }
 
         if ($errors !== []) {

@@ -65,7 +65,7 @@ class ScalingMode extends Model
                 ->when(filled($includeCode), fn (Builder $query) => $query->orWhere('code', $includeCode)))
             ->orderBy('sort_order')
             ->get()
-            ->mapWithKeys(fn (self $mode): array => [$mode->code => $mode->translate('en')?->name ?? $mode->code])
+            ->mapWithKeys(fn (self $mode): array => [$mode->code => $mode->translate(app()->getLocale())?->name ?? $mode->code])
             ->all();
     }
 }

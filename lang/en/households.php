@@ -66,7 +66,7 @@ return [
     ],
     'mail' => [
         'someone' => 'Someone',
-        'subject' => ':name invited you to a household on The Sunday Table',
+        'subject' => ':name invited you to a household on My Kitchen',
         'line' => ':name invited you to join ":household" as :role to plan meals and shop together.',
         'action' => 'View invitation',
         'expires' => 'This invitation expires on :date. If you did not expect it, you can ignore this email.',

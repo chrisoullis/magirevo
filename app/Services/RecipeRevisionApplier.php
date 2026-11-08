@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Recipe;
+use App\Services\Recipes\RecipeStepGroups;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Writes an approved revision payload onto the live recipe tables. Only the revision publisher calls it, inside
@@ -22,6 +25,20 @@ class RecipeRevisionApplier
     {
         $now = now();
 
+        // UUIDs are the durable identity when restoring deleted lines.
+        $liveLines = DB::table('recipe_ingredients')->where('recipe_id', $recipeId)->get()->keyBy('line_uuid');
+        foreach ($payload['ingredients'] as &$line) {
+            if (isset($line['line_uuid'])) {
+                $line['id'] = $liveLines->get($line['line_uuid'])?->id;
+            }
+        }
+        unset($line);
+        DB::table('recipe_yields')->where('recipe_id', $recipeId)->delete();
+        foreach ($payload['yields'] ?? [] as $yield) {
+            $yield['evidence'] = json_encode($yield['evidence'], JSON_THROW_ON_ERROR);
+            DB::table('recipe_yields')->insert(['recipe_id' => $recipeId, ...$yield, 'created_at' => $now, 'updated_at' => $now]);
+        }
+
         DB::table('recipes')->where('id', $recipeId)->update([...$payload['recipe'], 'updated_at' => $now]);
 
         $this->syncTranslations($recipeId, $payload['translations'], $now);
@@ -32,9 +49,15 @@ class RecipeRevisionApplier
         $groupIds = $this->syncGroups($recipeId, $payload['ingredient_groups'], $now);
         $lineIds = $this->syncIngredients($recipeId, $payload['ingredients'], $groupIds, $revisionId, $now);
         $this->removeUnusedGroups($recipeId, $groupIds);
-        $stepIds = $this->syncSteps($recipeId, $payload['steps'], $now);
+        $stepGroups = app(RecipeStepGroups::class);
+        $recipe = Recipe::query()->findOrFail($recipeId);
+        $stepGroupIds = Schema::hasTable('recipe_step_groups') ? $stepGroups->sync($recipe, $payload['step_groups'] ?? []) : null;
+        $stepIds = $this->syncSteps($recipeId, $payload['steps'], $now, $stepGroupIds);
+        if ($stepGroupIds !== null) {
+            $stepGroups->removeUnused($recipe, array_values($stepGroupIds));
+        }
 
-        return ['ingredient_groups' => $groupIds, 'ingredients' => $lineIds, 'steps' => $stepIds];
+        return ['ingredient_groups' => $groupIds, 'ingredients' => $lineIds, 'steps' => $stepIds, 'step_groups' => $stepGroupIds ?? []];
     }
 
     /**
@@ -136,6 +159,7 @@ class RecipeRevisionApplier
 
         foreach ($lines as $index => $line) {
             $columns = [
+                ...array_intersect_key($line, array_flip(['line_uuid', 'line_type', 'component_recipe_id', 'component_recipe_revision_id', 'quantity_basis', 'shopping_mode', 'prepared_ingredient_id', 'prepared_quantity_per_batch', 'prepared_unit_id'])),
                 'ingredient_id' => $line['ingredient_id'],
                 'ingredient_group_id' => $line['group_index'] !== null ? $groupIds[$line['group_index']] : null,
                 'quantity' => $line['quantity'],
@@ -150,7 +174,7 @@ class RecipeRevisionApplier
             if ($line['id'] !== null && array_key_exists($line['id'], $existing)) {
                 $id = (int) $line['id'];
 
-                if ($existing[$id] !== $line['ingredient_id']) {
+                if ($existing[$id] !== (int) $line['ingredient_id']) {
                     $this->archiveDependents($id, $revisionId, 'line_replaced');
                 }
 
@@ -199,7 +223,7 @@ SQL, [$revisionId, $reason, $lineId]);
      * @param  list<array<string, mixed>>  $steps
      * @return array<int, int>
      */
-    private function syncSteps(int $recipeId, array $steps, mixed $now): array
+    private function syncSteps(int $recipeId, array $steps, mixed $now, ?array $stepGroupIds = null): array
     {
         $existing = DB::table('recipe_steps')->where('recipe_id', $recipeId)->pluck('id')->map(fn ($v): int => (int) $v)->all();
         $kept = collect($steps)->pluck('id')->filter()->map(fn ($v): int => (int) $v)->all();
@@ -212,7 +236,11 @@ SQL, [$revisionId, $reason, $lineId]);
         $ids = [];
 
         foreach ($steps as $index => $step) {
-            $columns = ['step_number' => $step['step_number'], 'duration_minutes' => $step['duration_minutes'], 'updated_at' => $now];
+            if (isset($step['step_group_index']) && ! array_key_exists($step['step_group_index'], $stepGroupIds ?? [])) {
+                throw new \InvalidArgumentException('Unknown cooking step group in revision payload.');
+            }
+            $membership = $stepGroupIds === null ? [] : ['recipe_step_group_id' => isset($step['step_group_index']) ? $stepGroupIds[$step['step_group_index']] : null];
+            $columns = [...$membership, 'step_number' => $step['step_number'], 'duration_minutes' => $step['duration_minutes'], 'updated_at' => $now];
 
             if ($step['id'] !== null && in_array($step['id'], $existing, true)) {
                 $id = (int) $step['id'];

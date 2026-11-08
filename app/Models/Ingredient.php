@@ -189,6 +189,7 @@ class Ingredient extends Model
     public function isInUse(): bool
     {
         return $this->recipeIngredients()->exists()
+            || RecipeIngredient::query()->where('prepared_ingredient_id', $this->id)->exists()
             || $this->substitutions()->exists()
             || $this->substitutionSuggestions()->exists()
             || $this->personalRecipeIngredientChanges()->exists()

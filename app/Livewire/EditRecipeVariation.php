@@ -211,7 +211,17 @@ class EditRecipeVariation extends Component
             ? Ingredient::query()->where('is_active', true)->whereHas('translations', fn ($q) => $q->where('name', 'ilike', '%'.addcslashes($search, '%_\\').'%'))->with('translations')->limit(12)->get()
             : collect();
 
+        $componentTitles = [];
+        foreach ($recipe->components()->with('componentRevision.recipe')->get() as $component) {
+            $revision = $component->componentRevision;
+            if ($revision !== null && Gate::allows('view', $revision->recipe)) {
+                $componentTitles[$component->line_uuid] = $revision->payload['translations'][$this->locale]['title']
+                    ?? $revision->payload['translations']['en']['title'] ?? '';
+            }
+        }
+
         return view('livewire.edit-recipe-variation', [
+            'componentTitles' => $componentTitles,
             'canSubmit' => Gate::allows('submitVariation', $recipe),
             'recipe' => $recipe, 'ingredients' => $ingredients, 'results' => $results,
             'attribution' => app(RecipeVariationAttribution::class)->present($recipe, auth()->user(), $this->locale),

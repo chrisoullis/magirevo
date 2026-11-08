@@ -6,8 +6,10 @@ use App\Models\Media;
 use App\Models\Recipe;
 use App\Services\DietaryClaimVisibility;
 use App\Services\RecipeAccessService;
+use App\Services\RecipeComponentResolver;
 use App\Services\RecipeContentPresenter;
 use App\Services\RecipeMediaMetadata;
+use App\Services\RecipeRevisionSnapshotter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +32,9 @@ class RecipeController extends Controller
             ->published()
             ->whereKeyNot($recipe->getKey())
             ->when($category, fn ($query) => $query->inCategory($category->code))
-            ->with(['translations', 'categories.translations', 'media.translations'])
+            ->with(['translations', 'categories.translations', 'media.translations', 'currentRevision:id,status,media_snapshot'])
+            ->withCount(['ratings as public_rating_count' => fn ($ratings) => $ratings->active()])
+            ->withAvg(['ratings as public_rating_average' => fn ($ratings) => $ratings->active()], 'rating')
             ->orderByDesc('is_featured')
             ->orderByDesc('published_at')
             ->limit(3)
@@ -49,12 +53,16 @@ class RecipeController extends Controller
         $ratingSummary = $isPublic ? $this->ratingSummary($recipe) : ['average' => null, 'count' => 0];
 
         $response = response()->view('recipes.show', [
+            'cookingPageHash' => config('cooking.sessions_enabled') ? ($isPublic ? $recipe->currentRevision()->value('content_hash') : app(RecipeRevisionSnapshotter::class)->hash(app(RecipeRevisionSnapshotter::class)->serialize($recipe->id))) : '',
             'isPublic' => $isPublic,
             'locale' => $locale,
             'recipe' => $recipe,
             'category' => $category,
+            'ratingSummary' => $ratingSummary,
             'related' => $related,
             'steps' => $presenter->steps($recipe, $locale),
+            'stepSections' => $presenter->stepSections($recipe, $locale),
+            'components' => $presenter->components($recipe),
             'baseServings' => $presenter->baseServings($recipe),
             'gallery' => app(RecipeMediaMetadata::class)->present($recipe, $recipe->media)
                 ->filter(fn (Media $media): bool => $media->pivot->role === 'gallery' && $media->media_type === Media::TYPE_IMAGE)
@@ -101,17 +109,31 @@ class RecipeController extends Controller
             'baseServings' => $base,
             'groups' => $presenter->ingredientGroups($recipe, (string) $servings),
             'steps' => $presenter->steps($recipe, $locale),
-            'backUrl' => route('recipes.show', ['locale' => $locale, 'slug' => $slug], false),
+            'stepSections' => $presenter->stepSections($recipe, $locale),
+            'backUrl' => route('recipes.show', ['locale' => $locale, 'slug' => $slug, 'servings' => $servings], false),
         ]);
 
         // The print view is never indexed; non-public recipes must not be cached either.
         $response->header('X-Robots-Tag', 'noindex, nofollow, noarchive');
 
-        if (! $recipe->isPubliclyAccessible()) {
+        if (! $recipe->isPubliclyAccessible() || Auth::check()) {
             $response->header('Cache-Control', 'private, no-store');
         }
 
         return $response;
+    }
+
+    public function component(Request $request, string $locale, string $slug, RecipeContentPresenter $presenter, RecipeAccessService $access): Response
+    {
+        $recipe = $this->findViewable($locale, $slug, $access);
+        $path = $request->query('path');
+        abort_unless(is_string($path) && strlen($path) <= 256, 404);
+        $component = collect($presenter->components($recipe))->firstWhere('path', $path);
+        abort_if($component === null, 404);
+
+        return response()->view('recipes.partials.component-preview', compact('component', 'locale'))
+            ->header('Cache-Control', 'private, no-store')
+            ->header('X-Robots-Tag', 'noindex, nofollow, noarchive');
     }
 
     private function findViewable(string $locale, string $slug, RecipeAccessService $access): Recipe
@@ -123,6 +145,8 @@ class RecipeController extends Controller
 
         // 404 rather than 403 so private and shared recipes are indistinguishable from missing ones.
         abort_if($recipe === null || ! $access->canView(Auth::user(), $recipe), 404);
+
+        abort_unless(app(RecipeComponentResolver::class)->canResolve($recipe, Auth::user()), 404);
 
         return $recipe;
     }
@@ -156,7 +180,7 @@ class RecipeController extends Controller
             'name' => $recipe->title,
             'description' => $recipe->summary ?: $recipe->seo_description,
             'image' => $images,
-            'author' => ['@type' => 'Organization', 'name' => 'The Sunday Table'],
+            'author' => $recipe->author ? ['@type' => 'Person', 'name' => $recipe->author->name] : ['@type' => 'Organization', 'name' => 'My Kitchen'],
             'datePublished' => $recipe->published_at?->toIso8601String(),
             'dateModified' => $recipe->updated_at?->toIso8601String(),
             'prepTime' => 'PT'.$recipe->prep_minutes.'M',
@@ -166,20 +190,7 @@ class RecipeController extends Controller
             'recipeCategory' => $recipe->categoryLabel(),
             'keywords' => app(DietaryClaimVisibility::class)->publicTags($recipe)->map(fn ($tag) => $tag->translate($locale)?->name)->filter()->implode(', ') ?: null,
             'recipeIngredient' => $presenter->plainIngredients($recipe),
-            'recipeInstructions' => collect($presenter->steps($recipe, $locale))
-                ->map(fn (array $step): array => array_filter([
-                    '@type' => 'HowToStep',
-                    'position' => $step['number'],
-                    'text' => $step['text'],
-                    'image' => collect($step['images'])->pluck('url')->all(),
-                    'video' => $step['video'] === null ? null : array_filter([
-                        '@type' => 'VideoObject',
-                        'name' => $step['video']['title'],
-                        'description' => $step['video']['caption'],
-                        'embedUrl' => $step['video']['embed_url'],
-                    ], fn ($value) => $value !== null && $value !== ''),
-                ], fn ($value) => $value !== null && $value !== []))
-                ->all(),
+            'recipeInstructions' => $presenter->instructionSchema($recipe, $locale),
             'aggregateRating' => $ratingSummary['count'] > 0 ? [
                 '@type' => 'AggregateRating',
                 'ratingValue' => round((float) $ratingSummary['average'], 2),

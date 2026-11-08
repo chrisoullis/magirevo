@@ -1,0 +1,47 @@
+{
+  "url": "http://127.0.0.1:8019/en",
+  "fetchTime": "2026-11-03T21:11:17.269Z",
+  "scores": {
+    "performance": 0.51,
+    "accessibility": 1,
+    "best-practices": 1,
+    "seo": 1
+  },
+  "metrics": {
+    "largest-contentful-paint": {
+      "numericValue": 5268.936900000001,
+      "numericUnit": "millisecond",
+      "displayValue": "5.3\u00a0s"
+    },
+    "cumulative-layout-shift": {
+      "numericValue": 0.002929922370905582,
+      "numericUnit": "unitless",
+      "displayValue": "0.003"
+    },
+    "total-blocking-time": {
+      "numericValue": 940.3130000000001,
+      "numericUnit": "millisecond",
+      "displayValue": "940\u00a0ms"
+    },
+    "first-contentful-paint": {
+      "numericValue": 2787.4649,
+      "numericUnit": "millisecond",
+      "displayValue": "2.8\u00a0s"
+    },
+    "speed-index": {
+      "numericValue": 5523.4013348999615,
+      "numericUnit": "millisecond",
+      "displayValue": "5.5\u00a0s"
+    }
+  },
+  "limitations": [
+    "Local artisan server with Xdebug, concurrent PHPUnit and browser audits; not a production measurement.",
+    "INP field data not collected."
+  ],
+  "opportunities": [
+    "Reduce origin response time (initial local result 2220ms).",
+    "Serve responsive optimized recipe images; seeded recipe cards fetch 1200px images.",
+    "Enable asset compression and long-lived caching for versioned build assets at deployment.",
+    "Re-measure on production-equivalent hosting under representative mobile conditions."
+  ]
+}

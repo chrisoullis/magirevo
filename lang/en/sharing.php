@@ -31,7 +31,7 @@ return [
     'mail' => [
         'someone' => 'Someone',
         'subject' => ':name shared a recipe with you',
-        'line' => ':name shared a private recipe with you on The Sunday Table.',
+        'line' => ':name shared a private recipe with you on My Kitchen.',
         'action' => 'View shared recipes',
     ],
     'page' => [

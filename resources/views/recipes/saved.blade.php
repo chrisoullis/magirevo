@@ -1,21 +1,23 @@
 @extends('layouts.app')
 
-@section('title', 'My recipe box | The Sunday Table')
-@section('meta_description', 'Your saved recipes from The Sunday Table.')
+@section('title', __('modules.saved_title').' | My Kitchen')
+@section('robots', 'noindex, nofollow')
+@section('meta_description', __('modules.saved_intro'))
 
 @section('content')
+    <x-site.kitchen-shortcuts />
     <section class="saved-page">
         <div class="saved-heading">
-            <span class="eyebrow"><span class="eyebrow-dot"></span> Kept close</span>
-            <h1>Your recipe box.</h1>
-            <p>A little collection of things you want to cook.</p>
+            <span class="eyebrow"><span class="eyebrow-dot"></span> {{ __('modules.saved_eyebrow') }}</span>
+            <h1>{{ __('modules.saved_title') }}</h1>
+            <p>{{ __('modules.saved_intro') }}</p>
         </div>
         @if ($recipes->isEmpty())
             <div class="empty-state saved-empty">
                 <span class="empty-mark" aria-hidden="true">&#10038;</span>
-                <h2>A fresh page.</h2>
-                <p>Save recipes as you browse and they'll be waiting here.</p>
-                <a class="button button-dark" href="{{ route('home.localized', ['locale' => app()->getLocale()], false) }}#recipes">Browse recipes <span aria-hidden="true">&#8594;</span></a>
+                <h2>{{ __('modules.saved_empty_title') }}</h2>
+                <p>{{ __('modules.saved_empty') }}</p>
+                <a class="button button-dark" href="{{ route('home.localized', ['locale' => app()->getLocale()], false) }}#recipes">{{ __('kitchen.browse') }} <span aria-hidden="true">&#8594;</span></a>
             </div>
         @else
             <div class="recipe-grid saved-grid">

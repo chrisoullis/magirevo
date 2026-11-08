@@ -12,6 +12,7 @@ use App\Models\MediaTranslation;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\RecipeIngredientTranslation;
+use App\Models\RecipeShare;
 use App\Models\RecipeStep;
 use App\Models\RecipeStepTranslation;
 use App\Observers\DietaryRevalidationObserver;
@@ -39,7 +40,7 @@ class AppServiceProvider extends ServiceProvider
             $model::observe(VariationMediaEditObserver::class);
         }
 
-        foreach ([Recipe::class, RecipeIngredient::class, RecipeStep::class, RecipeIngredientTranslation::class, RecipeStepTranslation::class, IngredientSubstitution::class] as $model) {
+        foreach ([Recipe::class, RecipeIngredient::class, RecipeStep::class, RecipeIngredientTranslation::class, RecipeStepTranslation::class, IngredientSubstitution::class, RecipeShare::class] as $model) {
             $model::observe(DietaryRevalidationObserver::class);
         }
 

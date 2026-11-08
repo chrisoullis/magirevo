@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\RecipeStatus;
 use App\Enums\RecipeVisibility;
+use App\Services\RecipeComponentInvalidationService;
 use App\Services\RecipeMediaMetadata;
 use App\Services\RecipePublishingService;
 use App\Services\RecipeQuotaService;
@@ -150,6 +151,21 @@ class Recipe extends Model
         return $this->hasMany(RecipeIngredient::class);
     }
 
+    public function components(): HasMany
+    {
+        return $this->recipeIngredients()->where('line_type', 'recipe')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function usedAsComponentIn(): HasMany
+    {
+        return $this->hasMany(RecipeIngredient::class, 'component_recipe_id');
+    }
+
+    public function yields(): HasMany
+    {
+        return $this->hasMany(RecipeYield::class)->orderBy('basis');
+    }
+
     public function personalNotes(): HasMany
     {
         return $this->hasMany(UserRecipeNote::class);
@@ -163,6 +179,11 @@ class Recipe extends Model
     public function personalIngredientChanges(): HasMany
     {
         return $this->hasMany(UserRecipeIngredientChange::class);
+    }
+
+    public function stepGroups(): HasMany
+    {
+        return $this->hasMany(RecipeStepGroup::class)->orderBy('position')->orderBy('id');
     }
 
     public function steps(): HasMany
@@ -208,7 +229,8 @@ class Recipe extends Model
             && $this->status === RecipeStatus::Published->value
             && $this->published_at !== null
             && ! $this->published_at->isFuture()
-            && ! $this->trashed();
+            && ! $this->trashed()
+            && app(RecipeComponentInvalidationService::class)->publicGraphAvailable($this);
     }
 
     /**
@@ -230,6 +252,7 @@ class Recipe extends Model
     public function scopePublished(Builder $query): Builder
     {
         return $query
+            ->whereNotIn('recipes.id', app(RecipeComponentInvalidationService::class)->publiclyBlockedRecipeIds())
             ->where('status', 'published')
             ->where('visibility', RecipeVisibility::Public->value)
             ->where('published_at', '<=', now())

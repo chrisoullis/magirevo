@@ -1,0 +1,32 @@
+{
+  "results": [
+    {
+      "path": "/en/my-recipes/8/edit",
+      "width": 390,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    },
+    {
+      "path": "/en/my-recipes/8/edit",
+      "width": 1440,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    },
+    {
+      "path": "/el/my-recipes/8/edit",
+      "width": 390,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    },
+    {
+      "path": "/el/my-recipes/8/edit",
+      "width": 1440,
+      "axeViolations": 0,
+      "overflow": false,
+      "checklistProgressVerified": false
+    }
+  ]
+}

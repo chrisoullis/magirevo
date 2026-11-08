@@ -2,7 +2,7 @@
 
 return [
     'skip' => 'Μετάβαση στο περιεχόμενο',
-    'brand_label' => 'The Sunday Table, αρχική σελίδα',
+    'brand_label' => 'My Kitchen, αρχική σελίδα',
     'language_label' => 'Επιλογή γλώσσας',
     'main_nav' => 'Κύρια πλοήγηση',
     'nav_recipes' => 'Συνταγές',
@@ -12,15 +12,15 @@ return [
     'log_in' => 'Σύνδεση',
     'log_out' => 'Αποσύνδεση',
     'join' => 'Γίνε μέλος',
-    'default_title' => 'The Sunday Table | Συνταγές για την καθημερινότητα',
-    'default_description' => 'Τα καλά πράγματα συμβαίνουν γύρω από ένα τραπέζι. Βρείτε χαλαρές, εποχικές συνταγές για την καθημερινή ζωή στο The Sunday Table.',
+    'default_title' => 'My Kitchen | Συνταγές για την καθημερινότητα',
+    'default_description' => 'Τα καλά πράγματα συμβαίνουν γύρω από ένα τραπέζι. Βρείτε χαλαρές, εποχικές συνταγές για την καθημερινή ζωή στο My Kitchen.',
     'footer_tagline' => 'Μαγειρέψτε κάτι καλό. Μοιραστείτε το.',
     'footer_credit' => 'Φτιαγμένο για τη χαρά του καλού φαγητού.',
     'sitemap' => 'Χάρτης ιστότοπου',
     'home' => 'Αρχική',
 
-    'home_title' => 'The Sunday Table | Καλό φαγητό για την καθημερινότητα',
-    'home_description' => 'Εποχικές, απλές συνταγές φτιαγμένες για να μοιράζονται. Βρείτε το επόμενο αγαπημένο σας βραδινό, γλυκό ή κυριακάτικο γεύμα στο The Sunday Table.',
+    'home_title' => 'My Kitchen | Καλό φαγητό για την καθημερινότητα',
+    'home_description' => 'Εποχικές, απλές συνταγές φτιαγμένες για να μοιράζονται. Βρείτε το επόμενο αγαπημένο σας βραδινό, γλυκό ή κυριακάτικο γεύμα στο My Kitchen.',
     'hero_eyebrow' => 'Το καθημερινό βιβλίο μαγειρικής',
     'hero_title_1' => 'Καλό φαγητό.',
     'hero_title_2' => 'Καλή παρέα.',
@@ -74,7 +74,7 @@ return [
 
     'category_eyebrow' => 'Κατηγορία',
     'category_title' => 'Συνταγές: :name',
-    'category_description' => 'Περιηγηθείτε στις συνταγές «:name» του The Sunday Table.',
+    'category_description' => 'Περιηγηθείτε στις συνταγές «:name» του My Kitchen.',
     'other_categories' => 'Περισσότερες κατηγορίες',
 
     'breadcrumb' => 'Διαδρομή πλοήγησης',
@@ -90,7 +90,7 @@ return [
     'remove_saved' => 'Αφαίρεση από το κουτί συνταγών',
     'join_to_save' => 'Γίνετε μέλος για να την αποθηκεύσετε',
     'verify_to_save' => 'Επαληθεύστε το email για αποθήκευση',
-    'photo_caption' => 'Από την κουζίνα του The Sunday Table',
+    'photo_caption' => 'Από την κουζίνα του My Kitchen',
     'need_eyebrow' => 'Τι θα χρειαστείτε',
     'ingredients' => 'Υλικά',
     'servings' => 'Μερίδες',
@@ -164,8 +164,8 @@ return [
     'personal_substitution_invalid_ingredient' => 'Επιλέξτε ένα ενεργό υλικό.',
     'substitution_recipe_ingredient_mismatch' => 'Η επιλεγμένη συνταγή δεν περιέχει αυτό το αρχικό υλικό.',
 
-    'saved_title' => 'Το κουτί μου με συνταγές | The Sunday Table',
-    'saved_description' => 'Οι αποθηκευμένες συνταγές σας από το The Sunday Table.',
+    'saved_title' => 'Το κουτί μου με συνταγές | My Kitchen',
+    'saved_description' => 'Οι αποθηκευμένες συνταγές σας από το My Kitchen.',
     'saved_eyebrow' => 'Κοντά σας',
     'saved_heading' => 'Το κουτί συνταγών σας.',
     'saved_sub' => 'Μια μικρή συλλογή από πράγματα που θέλετε να μαγειρέψετε.',
@@ -182,7 +182,7 @@ return [
     'cooking_mode_title' => 'Λειτουργία μαγειρέματος',
     'cooking_completed_count' => '{count} ολοκληρώθηκαν',
     'cooking_ingredients_note' => 'Τσεκάρετε τα υλικά καθώς προχωράτε. Μένουν συγχρονισμένα με τη σελίδα της συνταγής.',
-    'cooking_page_title' => 'Τι να μαγειρέψω; | The Sunday Table',
+    'cooking_page_title' => 'Τι να μαγειρέψω; | My Kitchen',
     'cooking_page_description' => 'Επιλέξτε τα υλικά που έχετε και βρείτε δημόσιες συνταγές που τα χρησιμοποιούν.',
     'cooking_page_eyebrow' => 'Λίγη έμπνευση για την κουζίνα',
     'cooking_intro' => 'Επιλέξτε τα υλικά που έχετε. Η αντιστοίχιση βασίζεται μόνο στα ονόματα των υλικών· δεν υπολογίζονται ποσότητες.',
@@ -245,5 +245,5 @@ return [
     'print_servings' => 'Μερίδες',
     'print_instructions' => 'Οδηγίες',
     'print_photo_credit' => 'Φωτογραφία: :credit',
-    'print_source' => 'Συνταγή από το The Sunday Table',
+    'print_source' => 'Συνταγή από το My Kitchen',
 ];

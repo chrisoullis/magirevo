@@ -54,11 +54,11 @@
             </div>
             @foreach ($draft['ingredients'] as $index => $line)
                 <section class="variation-row" wire:key="line-{{ $line['id'] ?? 'new' }}-{{ $index }}">
-                    <h3>{{ $ingredients->get($line['ingredient_id'])?->translate($locale)?->name }}</h3>
+                    <h3>{{ ($line['line_type'] ?? 'ingredient') === 'recipe' ? ($componentTitles[$line['line_uuid'] ?? ''] ?? __('variations.source_unavailable')) : $ingredients->get($line['ingredient_id'])?->translate($locale)?->name }}</h3>
                     <div class="variation-grid">
                         <label>{{ __('variations.quantity') }}<input type="number" wire:model="draft.ingredients.{{ $index }}.quantity" min="0" step="0.0001"></label>
                         <label>{{ __('variations.quantity_max') }}<input type="number" wire:model="draft.ingredients.{{ $index }}.quantity_max" min="0" step="0.0001"></label>
-                        <label>{{ __('variations.unit') }}<select wire:model="draft.ingredients.{{ $index }}.unit_id"><option value="">—</option>@foreach ($units as $unit)<option value="{{ $unit->id }}">{{ $unit->translate($locale)?->name ?? $unit->code }}</option>@endforeach</select></label>
+                        <label>{{ __('variations.unit') }}<select wire:model="draft.ingredients.{{ $index }}.unit_id" @disabled(($line['line_type'] ?? 'ingredient') === 'recipe' && in_array($line['quantity_basis'] ?? null, ['whole_batch', 'servings'], true))><option value="">—</option>@foreach ($units as $unit)<option value="{{ $unit->id }}">{{ $unit->translate($locale)?->name ?? $unit->code }}</option>@endforeach</select></label>
                         <label>{{ __('variations.scaling') }}<select wire:model="draft.ingredients.{{ $index }}.scaling_mode">@foreach ($modes as $mode)<option value="{{ $mode->code }}">{{ $mode->translate($locale)?->name ?? $mode->code }}</option>@endforeach</select></label>
                         <label>{{ __('variations.group') }}<select wire:model="draft.ingredients.{{ $index }}.group_index"><option value="">—</option>@foreach ($draft['ingredient_groups'] as $groupIndex => $group)<option value="{{ $groupIndex }}">{{ ($group['names'][$locale] ?? '') ?: (($group['names']['en'] ?? '') ?: $groupIndex + 1) }}</option>@endforeach</select></label>
                     </div>

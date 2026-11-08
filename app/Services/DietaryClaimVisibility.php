@@ -24,7 +24,10 @@ class DietaryClaimVisibility
         $claim->loadMissing(['tag', 'recipe']);
         $tag = $claim->tag;
 
-        return $claim->status->value === 'approved'
+        return $claim->recipe !== null
+            && $claim->recipe->isPubliclyAccessible()
+            && ! app(RecipeComponentDietaryTraversal::class)->inspect($claim->recipe, false)['unresolved']
+            && $claim->status->value === 'approved'
             && $this->isOnCurrentPublishedRevision($claim)
             && $this->isReleased($tag)
             && $claim->reviewed_by !== null

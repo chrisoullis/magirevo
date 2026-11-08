@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum RecipeRevisionStatus: string
 {
+    case Retained = 'retained';
     case Draft = 'draft';
     case InReview = 'in_review';
     case Rejected = 'rejected';

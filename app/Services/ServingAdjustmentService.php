@@ -3,12 +3,31 @@
 namespace App\Services;
 
 use App\Models\RecipeIngredient;
+use Brick\Math\BigRational;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class ServingAdjustmentService
 {
+    /**
+     * Preserve exact ratios while traversing component batches. Callers round final ingredient amounts to the
+     * existing four-decimal quantity precision, rather than rounding a small batch fraction before expansion.
+     *
+     * @return array{quantity: ?BigRational, quantity_max: ?BigRational, was_scaled: bool}
+     */
+    public function adjustForBatch(RecipeIngredient $line, BigRational $batchRatio): array
+    {
+        if (! $batchRatio->isGreaterThan(0)) {
+            throw new InvalidArgumentException('Requested batch ratio must be positive.');
+        }
+        $linear = $line->scaling_mode === 'linear';
+        $scale = fn (?string $quantity): ?BigRational => $quantity === null ? null
+            : ($linear ? BigRational::of($quantity)->multipliedBy($batchRatio) : BigRational::of($quantity));
+
+        return ['quantity' => $scale($line->quantity), 'quantity_max' => $scale($line->quantity_max), 'was_scaled' => $linear];
+    }
+
     /**
      * @return array{quantity: ?string, quantity_max: ?string, was_scaled: bool}
      */

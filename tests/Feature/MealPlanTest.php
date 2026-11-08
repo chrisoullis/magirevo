@@ -12,6 +12,7 @@ use App\Models\MealPlanEntry;
 use App\Models\Recipe;
 use App\Models\User;
 use App\Services\MealPlanService;
+use App\Services\RecipeRevisionService;
 use App\Services\RecipeShareService;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -44,6 +45,11 @@ class MealPlanTest extends TestCase
         $factory = $public ? Recipe::factory()->published() : Recipe::factory();
         $recipe = $factory->create($attributes);
         $recipe->fill(['en' => ['title' => $title, 'slug' => $slug, 'summary' => 'Tasty.'], 'el' => ['title' => $title.' EL', 'slug' => $slug.'-el', 'summary' => 'Νόστιμο.']])->save();
+
+        if ($public) {
+            app(RecipeRevisionService::class)->syncPublishedFromLive($recipe->id);
+            $recipe->refresh();
+        }
 
         return $recipe;
     }

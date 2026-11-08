@@ -6,9 +6,11 @@ use App\Models\IngredientSubstitution;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\RecipeIngredientTranslation;
+use App\Models\RecipeShare;
 use App\Models\RecipeStep;
 use App\Models\RecipeStepTranslation;
 use App\Services\DietaryClaimService;
+use App\Services\RecipeComponentInvalidationService;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -32,7 +34,8 @@ class DietaryRevalidationObserver
     private function schedule(Model $model): void
     {
         $recipeId = match (true) {
-            $model instanceof Recipe => $model->wasChanged(['status', 'visibility']) ? $model->getKey() : null,
+            $model instanceof Recipe => $model->trashed() || $model->wasChanged(['status', 'visibility', 'published_at', 'deleted_at']) ? $model->getKey() : null,
+            $model instanceof RecipeShare => $model->recipe_id,
             $model instanceof RecipeIngredient, $model instanceof RecipeStep, $model instanceof IngredientSubstitution => $model->recipe_id,
             $model instanceof RecipeIngredientTranslation => $model->recipeIngredient?->recipe_id,
             $model instanceof RecipeStepTranslation => $model->recipeStep?->recipe_id,
@@ -40,6 +43,7 @@ class DietaryRevalidationObserver
         };
 
         if ($recipeId !== null && Recipe::withTrashed()->whereKey($recipeId)->exists()) {
+            app(RecipeComponentInvalidationService::class)->schedule((int) $recipeId, $model instanceof Recipe || $model instanceof RecipeShare);
             $this->claims->scheduleRevalidation(
                 (int) $recipeId,
                 $model instanceof Recipe

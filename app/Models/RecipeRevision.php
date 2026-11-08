@@ -83,4 +83,14 @@ class RecipeRevision extends Model
     {
         return $this->hasMany(RecipeRevisionMedia::class);
     }
+
+    public function dependencies(): HasMany
+    {
+        return $this->hasMany(RecipeRevisionDependency::class);
+    }
+
+    public function referencedBy(): HasMany
+    {
+        return $this->hasMany(RecipeRevisionDependency::class, 'component_recipe_revision_id');
+    }
 }

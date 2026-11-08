@@ -53,7 +53,7 @@ class RecipeDietaryFingerprint
             ->map(fn (RecipeStep $step): array => $this->localized($step->translations->pluck('instruction', 'locale')->all()))
             ->all();
 
-        return $this->build($recipeId, $ingredients, $steps, $tag);
+        return $this->build($recipeId, $ingredients, $steps, $tag, app(RecipeComponentDietaryTraversal::class)->inspect(Recipe::withTrashed()->findOrFail($recipeId)));
     }
 
     /**
@@ -78,7 +78,7 @@ class RecipeDietaryFingerprint
 
         $ingredients = collect($payload['ingredients'] ?? [])
             ->map(fn (array $line): array => [
-                'i' => (int) $line['ingredient_id'],
+                'i' => (int) ($line['ingredient_id'] ?? 0),
                 'q' => $this->number($line['quantity'] ?? null),
                 'qm' => $this->number($line['quantity_max'] ?? null),
                 'u' => ($line['unit_id'] ?? null) === null ? null : (int) $line['unit_id'],
@@ -95,14 +95,14 @@ class RecipeDietaryFingerprint
             ->values()
             ->all();
 
-        return $this->build((int) $revision->recipe_id, $ingredients, $steps, $tag);
+        return $this->build((int) $revision->recipe_id, $ingredients, $steps, $tag, app(RecipeComponentDietaryTraversal::class)->inspect($revision));
     }
 
     /**
      * @param  list<array<string, mixed>>  $ingredients
      * @param  list<array<string, string>>  $steps
      */
-    private function build(int $recipeId, array $ingredients, array $steps, ?Tag $tag): string
+    private function build(int $recipeId, array $ingredients, array $steps, ?Tag $tag, array $nested): string
     {
         $substitutions = IngredientSubstitution::query()
             ->where('recipe_id', $recipeId)
@@ -113,7 +113,7 @@ class RecipeDietaryFingerprint
             ->values()
             ->all();
 
-        $ingredientIds = collect($ingredients)->pluck('i')->unique()->values();
+        $ingredientIds = collect($ingredients)->pluck('i')->merge($nested['ids'])->filter()->unique()->values();
         $allIngredientIds = $ingredientIds->all();
         $frontier = $allIngredientIds;
 
@@ -177,9 +177,35 @@ class RecipeDietaryFingerprint
             'claim' => $claimDefinition,
             'ingredients' => $ingredients,
             'ingredient_metadata' => $ingredientMetadata,
+            ...($nested['components'] === [] ? [] : ['recipe_components' => $nested['components']]),
             'steps' => $steps,
             'substitutions' => $substitutions,
         ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+    }
+
+    /** Content only: no live source revision pointer, claims, titles or media. */
+    public function forRevisionContent(RecipeRevision $revision): string
+    {
+        $payload = $revision->payload;
+        $lines = collect($payload['ingredients'] ?? [])->map(function (array $line): array {
+            return [
+                'type' => $line['line_type'] ?? 'ingredient',
+                'ingredient' => $line['ingredient_id'] ?? null,
+                'quantity' => $this->number($line['quantity'] ?? null),
+                'quantity_max' => $this->number($line['quantity_max'] ?? null),
+                'unit' => $line['unit_id'] ?? null,
+                'optional' => (bool) ($line['is_optional'] ?? false),
+                'notes' => $this->localized(collect($line['translations'] ?? [])->map(fn (array $row) => $row['preparation_note'] ?? null)->all()),
+            ];
+        })->sortBy(fn (array $line): string => json_encode($line))->values()->all();
+        $steps = collect($payload['steps'] ?? [])->sortBy('step_number')
+            ->map(fn (array $step): array => $this->localized(collect($step['translations'] ?? [])->map(fn (array $row) => $row['instruction'] ?? null)->all()))->values()->all();
+
+        return hash('sha256', json_encode([
+            'ingredients' => $lines, 'steps' => $steps,
+            'servings' => $payload['recipe']['base_servings'] ?? null,
+            'yields' => $payload['yields'] ?? [], 'units' => $payload['units'] ?? [],
+        ], JSON_THROW_ON_ERROR));
     }
 
     private function number(mixed $value): ?string

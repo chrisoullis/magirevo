@@ -1,4 +1,4 @@
-<div class="flex flex-col gap-6">
+<div class="kitchen-module household-module flex flex-col gap-6">
     <header class="flex flex-col gap-2">
         <span class="eyebrow"><span class="eyebrow-dot"></span> {{ __('households.eyebrow') }}</span>
         <h1 class="text-3xl leading-tight">{{ __('households.heading') }}</h1>

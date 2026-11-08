@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'my_kitchen' => 'My Kitchen',
+    'your_kitchen' => 'A little space for your cooking.',
+    'dashboard' => 'My Kitchen Dashboard',
+    'my_recipes' => 'My Recipes',
+    'my_variations' => 'My Variations',
+    'shopping_lists' => 'Shopping Lists',
+    'meal_planner' => 'Meal Planner',
+    'create_recipe' => 'Create Recipe',
+    'become_contributor' => 'Become a Contributor',
+    'create_account' => 'Create an account',
+    'sign_in_hint' => 'Save favourite recipes, plan your week and make cooking your own.',
+    'verify_hint' => 'Verify your email to open your kitchen.',
+    'open_menu' => 'Open navigation',
+    'mobile_navigation' => 'Mobile navigation',
+    'quick_navigation' => 'Quick navigation',
+    'discover' => 'Discover',
+    'account_for' => 'Account for :name',
+    'administration' => 'Administration',
+    'footer_description' => 'Good food, a little inspiration and a place to bring it all together. Your everyday Mediterranean kitchen.',
+    'footer_discover' => 'Discover My Kitchen',
+    'footer_kitchen' => 'Your kitchen links',
+];

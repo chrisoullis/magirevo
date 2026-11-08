@@ -23,7 +23,9 @@ class RecipeRevisionComparer
             ...$this->details($before, $after),
             ...$this->ingredients($before, $after),
             ...$this->steps($before, $after),
+            ...$this->stepGroups($before, $after),
             ...$this->lists($before, $after),
+            ...$this->yields($before, $after),
         ];
     }
 
@@ -92,6 +94,20 @@ class RecipeRevisionComparer
         return $changes;
     }
 
+    private function stepGroups(array $before, array $after): array
+    {
+        $changes = [];
+        $old = array_values($before['step_groups'] ?? []);
+        $new = array_values($after['step_groups'] ?? []);
+        for ($index = 0; $index < max(count($old), count($new)); $index++) {
+            $this->add($changes, __('cooking.groups'), __('cooking.group').' '.($index + 1),
+                isset($old[$index]) ? json_encode($old[$index]['translations'], JSON_UNESCAPED_UNICODE) : null,
+                isset($new[$index]) ? json_encode($new[$index]['translations'], JSON_UNESCAPED_UNICODE) : null);
+        }
+
+        return $changes;
+    }
+
     private function lists(array $before, array $after): array
     {
         $changes = [];
@@ -108,11 +124,15 @@ class RecipeRevisionComparer
 
     private function lineKey(array $line): string
     {
-        return ($line['ingredient_id'] ?? 0).'|'.($line['id'] ?? 'new-'.md5(json_encode($line)));
+        return $line['line_uuid'] ?? ($line['ingredient_id'] ?? 0).'|'.($line['id'] ?? 'new-'.md5(json_encode($line)));
     }
 
     private function ingredientName(array $line): string
     {
+        if (($line['line_type'] ?? 'ingredient') === 'recipe') {
+            return 'Recipe #'.$line['component_recipe_id'];
+        }
+
         $ingredient = Ingredient::query()->with('translations')->find($line['ingredient_id'] ?? 0);
 
         return $ingredient?->translate('en')?->name ?? 'Ingredient #'.($line['ingredient_id'] ?? '?');
@@ -129,7 +149,25 @@ class RecipeRevisionComparer
 
         $notes = collect($line['translations'] ?? [])->map(fn (array $row, string $locale): ?string => filled($row['preparation_note'] ?? null) ? strtoupper($locale).': '.$row['preparation_note'] : null)->filter()->implode('; ');
 
-        return trim(implode(' ', array_filter([$quantity, $unit, ($line['is_optional'] ?? false) ? '(optional)' : null, $notes !== '' ? "— {$notes}" : null])));
+        return trim(implode(' ', array_filter([$quantity, $unit, $this->componentDescription($line), ($line['is_optional'] ?? false) ? '(optional)' : null, $notes !== '' ? "— {$notes}" : null])));
+    }
+
+    private function componentDescription(array $line): ?string
+    {
+        if (($line['line_type'] ?? 'ingredient') !== 'recipe') {
+            return null;
+        }
+
+        return json_encode(array_intersect_key($line, array_flip(['line_type', 'component_recipe_id', 'component_recipe_revision_id', 'quantity_basis', 'shopping_mode', 'prepared_ingredient_id', 'prepared_quantity_per_batch', 'prepared_unit_id'])), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    }
+
+    private function yields(array $before, array $after): array
+    {
+        $changes = [];
+        $this->add($changes, 'Units', 'Unit definitions', json_encode($before['units'] ?? []), json_encode($after['units'] ?? []));
+        $this->add($changes, 'Yields', 'Verified yields', json_encode($before['yields'] ?? []), json_encode($after['yields'] ?? []));
+
+        return $changes;
     }
 
     private function describeStep(?array $step): ?string
@@ -138,7 +176,9 @@ class RecipeRevisionComparer
             return null;
         }
 
-        return collect($step['translations'] ?? [])->map(fn (array $row, string $locale): string => strtoupper($locale).': '.($row['instruction'] ?? ''))->implode("\n");
+        $group = isset($step['step_group_index']) ? __('cooking.group').' '.($step['step_group_index'] + 1) : __('cooking.ungrouped');
+
+        return $group."\n".collect($step['translations'] ?? [])->map(fn (array $row, string $locale): string => strtoupper($locale).': '.($row['instruction'] ?? ''))->implode("\n");
     }
 
     /**

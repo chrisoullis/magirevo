@@ -1,0 +1,96 @@
+{
+  "checks": [
+    {
+      "path": "/en",
+      "lang": "en",
+      "canonical": true,
+      "hreflang": true,
+      "structuredTypes": [
+        "WebSite"
+      ]
+    },
+    {
+      "path": "/en/ingredients",
+      "lang": "en",
+      "canonical": true,
+      "hreflang": true,
+      "structuredTypes": []
+    },
+    {
+      "path": "/en/ingredients/salmon",
+      "lang": "en",
+      "canonical": true,
+      "hreflang": true,
+      "structuredTypes": [
+        "DefinedTerm",
+        "BreadcrumbList"
+      ]
+    },
+    {
+      "path": "/en/recipes/crispy-chickpeas-herby-yogurt",
+      "lang": "en",
+      "canonical": true,
+      "hreflang": true,
+      "structuredTypes": [
+        "Recipe",
+        "BreadcrumbList"
+      ]
+    },
+    {
+      "path": "/el",
+      "lang": "el",
+      "canonical": true,
+      "hreflang": true,
+      "structuredTypes": [
+        "WebSite"
+      ]
+    },
+    {
+      "path": "/el/ingredients",
+      "lang": "el",
+      "canonical": true,
+      "hreflang": true,
+      "structuredTypes": []
+    },
+    {
+      "path": "/el/ingredients/solomos",
+      "lang": "el",
+      "canonical": true,
+      "hreflang": true,
+      "structuredTypes": [
+        "DefinedTerm",
+        "BreadcrumbList"
+      ]
+    },
+    {
+      "path": "/el/recipes/crispy-chickpeas-herby-yogurt-el",
+      "lang": "el",
+      "canonical": true,
+      "hreflang": true,
+      "structuredTypes": [
+        "Recipe",
+        "BreadcrumbList"
+      ]
+    },
+    {
+      "path": "/sitemap.xml",
+      "publicDestinationsOnly": true
+    },
+    {
+      "path": "/en/my-kitchen",
+      "guestRedirect": true
+    },
+    {
+      "path": "/el/saved-recipes",
+      "guestRedirect": true
+    },
+    {
+      "path": "/en/recipe-studio/create",
+      "guestRedirect": true
+    },
+    {
+      "path": "/el/planner",
+      "guestRedirect": true
+    }
+  ]
+}

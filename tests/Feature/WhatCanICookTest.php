@@ -13,6 +13,7 @@ use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\ShoppingList;
 use App\Models\User;
+use App\Services\RecipeRevisionService;
 use App\Services\ShoppingListService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -107,6 +108,8 @@ class WhatCanICookTest extends TestCase
         $original = $this->ingredient('Yogurt', 'Γιαούρτι');
         $alternative = $this->ingredient('Sour cream', 'Ξινή κρέμα');
         $recipe = $this->publicRecipe('Planned substitution recipe', [$original]);
+        app(RecipeRevisionService::class)->syncPublishedFromLive($recipe->id);
+        $recipe->refresh();
         $line = $recipe->recipeIngredients()->firstOrFail();
         $substitution = $this->substitution($original, $alternative, $recipe, 'Use instead.', 'Χρησιμοποιήστε το αντί αυτού.');
 

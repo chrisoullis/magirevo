@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'add_line' => 'Add ingredient or sub-recipe',
+    'add_ingredient' => 'Add ingredient',
+    'disabled' => 'Recipe components are temporarily unavailable.',
+    'line_type' => 'Row type',
+    'ingredient' => 'Ingredient',
+    'recipe' => 'Component recipe',
+    'quantity_basis' => 'Quantity basis',
+    'whole_batch' => 'Whole batch',
+    'servings' => 'Servings',
+    'weight' => 'Weight',
+    'volume' => 'Volume',
+    'shopping_mode' => 'Shopping mode',
+    'scratch' => 'Make from scratch',
+    'prepared' => 'Buy ready-made',
+    'prepared_ingredient' => 'Ready-made ingredient',
+    'prepared_quantity' => 'Ready-made quantity per component batch',
+    'prepared_unit' => 'Ready-made unit',
+    'unavailable' => 'This component recipe or version is unavailable.',
+    'invalid_component' => 'Choose an accessible recipe, a positive quantity (or manual handling), a quantity basis and a shopping mode.',
+    'mapping_required' => 'Ready-made mode requires an ingredient, a positive quantity per batch and a unit.',
+    'yields' => 'Verified batch yields',
+    'evidence' => 'Evidence',
+    'yield_permission' => 'Only recipe reviewers can change verified yields.',
+];

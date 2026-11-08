@@ -1,97 +1,66 @@
 <div>
-    <section class="hero-section" aria-labelledby="hero-title">
-        <div class="hero-image" style="background-image: linear-gradient(90deg, rgba(17, 29, 24, .78) 0%, rgba(17, 29, 24, .44) 48%, rgba(17, 29, 24, .08) 100%), url('{{ $featured?->coverUrl() ?? asset('images/recipe-placeholder.svg') }}')"></div>
-        <div class="hero-copy">
-            <span class="eyebrow eyebrow-light"><span class="eyebrow-dot"></span> The everyday cookbook</span>
-            <h1 id="hero-title">Good food.<br><em>Good company.</em></h1>
-            <p>Seasonal, unfussy recipes for the meals that bring us back to the table.</p>
-            <a class="button button-light" href="#recipes">Find something to cook <span aria-hidden="true">&#8595;</span></a>
-        </div>
-        <div class="hero-note"><span>ON THE TABLE</span><span>{{ $featured?->title ?? 'Something good is cooking' }}</span></div>
-    </section>
-
-    <section class="recipe-section" id="recipes" aria-labelledby="recipes-title">
-        <div class="section-heading">
-            <div>
-                <span class="eyebrow"><span class="eyebrow-dot"></span> From our kitchen</span>
-                <h2 id="recipes-title">A little inspiration<br class="mobile-break"> goes a long way.</h2>
-            </div>
-            <p class="section-intro">Tested, tasted and made to be cooked again. Pick a mood, then make it yours.</p>
-        </div>
-
+    <section class="recipe-section home-catalogue" id="recipes" aria-labelledby="recipes-title">
+        <div class="home-section-heading"><div><span class="home-eyebrow">{{ __('site.nav_recipes') }}</span><h2 id="recipes-title">{{ __('homepage.catalogue_heading') }}</h2></div><p>{{ __('homepage.catalogue_intro') }}</p></div>
         <div class="recipe-tools">
             @if ($categoryCode === null)
-                @php
-                    $activeRoot = collect($categories)->first(fn ($root) => $category === $root['code'] || collect($root['children'])->contains('code', $category));
-                @endphp
+                @php($activeRoot = collect($categories)->first(fn ($root) => $category === $root['code'] || collect($root['children'])->contains('code', $category)))
                 <div class="category-filter">
-                    <div class="category-list" role="group" aria-label="Filter recipes by category">
-                        <button class="category-button {{ $category === '' ? 'is-active' : '' }}" type="button" wire:click="$set('category', '')" aria-pressed="{{ $category === '' ? 'true' : 'false' }}">All recipes</button>
+                    <div class="category-list" role="group" aria-label="{{ __('site.browse_categories') }}">
+                        <button class="category-button {{ $category === '' ? 'is-active' : '' }}" type="button" wire:click="$set('category', '')" aria-pressed="{{ $category === '' ? 'true' : 'false' }}">{{ __('site.all_categories') }}</button>
                         @foreach ($categories as $recipeCategory)
-                            <button class="category-button {{ $activeRoot && $activeRoot['code'] === $recipeCategory['code'] ? 'is-active' : '' }}" type="button" wire:click="$set('category', @js($recipeCategory['code']))" aria-pressed="{{ $category === $recipeCategory['code'] ? 'true' : 'false' }}">{{ $recipeCategory['name'] }} <span class="category-count">({{ $recipeCategory['count'] }})</span></button>
+                            <button class="category-button {{ $activeRoot && $activeRoot['code'] === $recipeCategory['code'] ? 'is-active' : '' }}" type="button" wire:click="$set('category', @js($recipeCategory['code']))" aria-pressed="{{ $category === $recipeCategory['code'] ? 'true' : 'false' }}" wire:key="category-{{ $recipeCategory['code'] }}">{{ $recipeCategory['name'] }} <span class="category-count">({{ $recipeCategory['count'] }})</span></button>
                         @endforeach
                     </div>
                     @if ($activeRoot && count($activeRoot['children']) > 0)
                         <div class="category-list category-sublist" role="group" aria-label="{{ $activeRoot['name'] }}">
                             @foreach ($activeRoot['children'] as $child)
-                                <button class="category-button {{ $category === $child['code'] ? 'is-active' : '' }}" type="button" wire:click="$set('category', @js($child['code']))" aria-pressed="{{ $category === $child['code'] ? 'true' : 'false' }}">{{ $child['name'] }} <span class="category-count">({{ $child['count'] }})</span></button>
+                                <button class="category-button {{ $category === $child['code'] ? 'is-active' : '' }}" type="button" wire:click="$set('category', @js($child['code']))" aria-pressed="{{ $category === $child['code'] ? 'true' : 'false' }}" wire:key="category-{{ $child['code'] }}">{{ $child['name'] }} <span class="category-count">({{ $child['count'] }})</span></button>
                             @endforeach
                         </div>
                     @endif
                 </div>
             @endif
-            <label class="search-field">
-                <span class="sr-only">Search recipes</span>
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4.2 4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                <input type="search" placeholder="Find a recipe" wire:model.live.debounce.250ms="search">
-            </label>
+            <label class="search-field"><span class="sr-only">{{ __('site.search_label') }}</span><x-ui.icon name="search" /><input type="search" maxlength="100" placeholder="{{ __('site.search_placeholder') }}" wire:model.live.debounce.250ms="search"></label>
         </div>
-
-        @if ($tags->contains('is_editorial', true))
-            <label class="search-field">
-                <span>{{ __('tags.filter', [], $locale) }}</span>
-                <select wire:model.live="tag">
-                    <option value="">{{ __('tags.all', [], $locale) }}</option>
-                    @foreach ($tags->where('is_editorial', true)->groupBy('group') as $group => $groupTags)
-                        <optgroup label="{{ $group }}">
-                            @foreach ($groupTags as $option)
-                                <option value="{{ $option['code'] }}" wire:key="tag-option-{{ $option['code'] }}">{{ $option['name'] }}</option>
-                            @endforeach
-                        </optgroup>
-                    @endforeach
-                </select>
-            </label>
-        @endif
-
-        <div class="recipe-grid" wire:loading.class="is-loading" wire:target="search, category, tag">
+        <details class="discovery-filter-panel" open>
+        <summary>{{ __('discovery.refine') }}<x-ui.icon name="chevron" /></summary>
+        <div class="home-catalogue-filters">
+            @foreach (['cuisine' => 'cuisine', 'method' => 'cooking_method'] as $field => $groupCode)
+                @if ($tags->where('group_code', $groupCode)->where('is_editorial', true)->isNotEmpty())
+                    <label><span>{{ __('discovery.'.$field) }}</span><select wire:model.live="{{ $field }}"><option value="">{{ __('discovery.any_'.$field) }}</option>@foreach ($tags->where('group_code', $groupCode)->where('is_editorial', true) as $option)<option value="{{ $option['code'] }}">{{ $option['name'] }}</option>@endforeach</select></label>
+                @endif
+            @endforeach
+            @if ($tags->where('is_editorial', false)->isNotEmpty())<label><span>{{ __('discovery.dietary') }}</span><select wire:model.live="dietary" aria-describedby="discovery-dietary-hint"><option value="">{{ __('discovery.any_dietary') }}</option>@foreach ($tags->where('is_editorial', false) as $option)<option value="{{ $option['code'] }}">{{ $option['name'] }}</option>@endforeach</select><small id="discovery-dietary-hint">{{ __('discovery.dietary_hint') }}</small></label>@endif
+            <label><span>{{ __('discovery.rating') }}</span><select wire:model.live="rating"><option value="">{{ __('discovery.any_rating') }}</option>@foreach ([3, 4, 5] as $stars)<option value="{{ $stars }}">{{ __('discovery.stars', ['count' => $stars]) }}</option>@endforeach</select></label>
+            @if ($tags->where('is_editorial', true)->isNotEmpty())
+                <label><span>{{ __('site.filter_tag') }}</span><select wire:model.live="tag"><option value="">{{ __('site.all_tags') }}</option>
+                    @foreach ($tags->where('is_editorial', true)->groupBy('group') as $group => $groupTags)<optgroup label="{{ $group }}">@foreach ($groupTags as $option)<option value="{{ $option['code'] }}">{{ $option['name'] }}</option>@endforeach</optgroup>@endforeach
+                </select></label>
+            @endif
+            <label><span>{{ __('site.filter_time') }}</span><select wire:model.live="time"><option value="">{{ __('site.any_time') }}</option>@foreach ($timeLimits as $minutes)<option value="{{ $minutes }}">{{ __('site.under_minutes', ['minutes' => $minutes]) }}</option>@endforeach</select></label>
+            <label><span>{{ __('site.filter_difficulty') }}</span><select wire:model.live="difficulty"><option value="">{{ __('site.any_difficulty') }}</option>@foreach ($difficulties as $code)<option value="{{ $code }}">{{ $difficultyLabels[$code] ?? $code }}</option>@endforeach</select></label>
+            <label><span>{{ __('site.sort_label') }}</span><select wire:model.live="sort">@foreach (['featured', 'newest', 'quickest', 'rating'] as $order)<option value="{{ $order }}">{{ $order === 'rating' ? __('discovery.sort_rating') : __('site.sort_'.$order) }}</option>@endforeach</select></label>
+            @if ($hasFilters)<button class="kitchen-button kitchen-button-secondary" type="button" wire:click="clearFilters">{{ __('site.clear_filters') }}</button>@endif
+        </div>
+        <div class="discovery-ingredient-filter">
+            <label for="discovery-ingredient-search">{{ __('discovery.ingredients') }}</label>
+            <p>{{ __('discovery.ingredient_match') }}</p>
+            <div class="discovery-ingredient-chips">@foreach ($selectedIngredients as $selected)<span wire:key="selected-ingredient-{{ $selected->code }}"><x-ingredient-link :name="$selected->getTranslation($locale, false)->name" :url="$selected->encyclopediaUrl($locale)" /><button type="button" wire:click="removeIngredient(@js($selected->code))" aria-label="{{ __('discovery.remove_ingredient', ['name' => $selected->getTranslation($locale, false)->name]) }}">×</button></span>@endforeach</div>
+            @if (count($ingredients) < 5)<input id="discovery-ingredient-search" type="search" maxlength="100" wire:model.live.debounce.250ms="ingredientSearch" placeholder="{{ __('discovery.ingredient_hint') }}" aria-controls="discovery-ingredient-options"><ul id="discovery-ingredient-options" aria-label="{{ __('discovery.ingredient_results') }}">@foreach ($ingredientResults as $option)<li wire:key="ingredient-option-{{ $option->id }}"><button type="button" wire:click="selectIngredient(@js($option->code))">{{ $option->getTranslation($locale, false)->name }}<x-ui.icon name="plus" /></button></li>@endforeach</ul>@if (mb_strlen(trim($ingredientSearch)) >= 2 && $ingredientResults->isEmpty())<p>{{ __('discovery.no_ingredients') }}</p>@endif @else<p>{{ __('discovery.ingredient_limit') }}</p>@endif
+        </div>
+        </details>
+        @foreach (['cuisine', 'method', 'dietary', 'rating', 'ingredients', 'ingredientSearch', 'time', 'sort', 'tag', 'collection', 'category', 'difficulty'] as $field) @error($field)<p class="field-error" role="alert">{{ $message }}</p>@enderror @endforeach
+        @foreach ($errors->get('ingredients.*') as $messages) @foreach ($messages as $message)<p class="field-error" role="alert">{{ $message }}</p>@endforeach @endforeach
+        @if (in_array($collection, ['local', 'world', 'seasonal'], true))<p class="discovery-collection">{{ __('discovery.collection', ['name' => __('homepage.'.match ($collection) { 'local' => 'local_recipes', 'world' => 'world_cuisines', default => 'seasonal' })]) }}</p>@endif
+        @error('search')<p class="field-error" role="alert">{{ $message }}</p>@enderror
+        <p class="home-result-count" role="status">{{ trans_choice('site.recipe_count', $total, ['count' => $total]) }}</p>
+        <div class="recipe-grid" wire:loading.class="is-loading">
             @forelse ($recipes as $recipe)
-                <x-recipe-card :recipe="$recipe" :locale="$locale" wire:key="recipe-{{ $recipe->id }}" />
+                <x-recipe-card :recipe="$recipe" :locale="$locale" :difficulty-label="$difficultyLabels[$recipe->difficulty] ?? ''" :show-save="true" :saved="$savedIds->contains($recipe->id)" :claims="$recipeClaims[$recipe->id] ?? []" wire:key="recipe-{{ $recipe->id }}" />
             @empty
-                <div class="empty-state">
-                    <span class="empty-mark" aria-hidden="true">&#10038;</span>
-                    <h3>Nothing on the menu just yet.</h3>
-                    <p>Try another search or choose a different category.</p>
-                    <button class="text-link" type="button" wire:click="$set('search', '')">Clear search <span aria-hidden="true">&#8594;</span></button>
-                </div>
+                <div class="empty-state"><x-ui.icon name="search" /><h3>{{ __('site.empty_title') }}</h3><p>{{ __('site.empty_text') }}</p><button class="kitchen-button kitchen-button-secondary" type="button" wire:click="clearFilters">{{ __('site.clear_filters') }}</button></div>
             @endforelse
         </div>
-    </section>
-
-    <section class="table-note" aria-label="A note from our kitchen">
-        <div class="table-note-image" role="img" aria-label="Fresh ingredients arranged on a kitchen table"></div>
-        <div class="table-note-copy">
-            <span class="eyebrow eyebrow-light"><span class="eyebrow-dot"></span> Around our table</span>
-            <h2>Make room<br>for one more.</h2>
-            <p>Save the recipes you love and keep your next good meal close at hand.</p>
-            @auth
-                @if (auth()->user()->hasVerifiedEmail())
-                    <a class="button button-light" href="{{ route('recipes.saved', ['locale' => $locale], false) }}">Open your recipe box <span aria-hidden="true">&#8594;</span></a>
-                @else
-                    <a class="button button-light" href="{{ route('verification.notice', [], false) }}">Verify your email <span aria-hidden="true">&#8594;</span></a>
-                @endif
-            @else
-                <a class="button button-light" href="{{ route('register', [], false) }}">Save your seat <span aria-hidden="true">&#8599;</span></a>
-            @endauth
-        </div>
+        <div class="home-load-more">{{ $recipes->links() }}</div>
     </section>
 </div>

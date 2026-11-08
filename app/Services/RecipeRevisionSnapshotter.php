@@ -2,7 +2,11 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Ramsey\Uuid\Uuid;
 
 /**
  * Turns a recipe's live content into a canonical payload and a content hash.
@@ -12,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  */
 class RecipeRevisionSnapshotter
 {
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 3;
 
     private const RECIPE_FIELDS = ['prep_minutes', 'cook_minutes', 'rest_minutes', 'base_servings', 'difficulty'];
 
@@ -21,7 +25,7 @@ class RecipeRevisionSnapshotter
     /**
      * @return array<string, mixed>
      */
-    public function serialize(int $recipeId): array
+    public function serialize(int $recipeId, array $units = []): array
     {
         $recipe = DB::table('recipes')->where('id', $recipeId)->first(self::RECIPE_FIELDS);
 
@@ -32,11 +36,15 @@ class RecipeRevisionSnapshotter
         $lines = DB::table('recipe_ingredients')->where('recipe_id', $recipeId)->orderBy('sort_order')->orderBy('id')->get();
         $lineTexts = DB::table('recipe_ingredient_translations')->whereIn('recipe_ingredient_id', $lines->pluck('id'))->orderBy('locale')->get()->groupBy('recipe_ingredient_id');
 
+        $hasStepGroups = Schema::hasTable('recipe_step_groups');
+        $stepGroups = $hasStepGroups ? DB::table('recipe_step_groups')->where('recipe_id', $recipeId)->orderBy('position')->orderBy('id')->get() : collect();
+        $stepGroupTexts = $hasStepGroups ? DB::table('recipe_step_group_translations')->whereIn('recipe_step_group_id', $stepGroups->pluck('id'))->orderBy('locale')->get()->groupBy('recipe_step_group_id') : collect();
+        $stepGroupIndex = $stepGroups->pluck('id')->flip();
         $steps = DB::table('recipe_steps')->where('recipe_id', $recipeId)->orderBy('step_number')->orderBy('id')->get();
         $stepTexts = DB::table('recipe_step_translations')->whereIn('recipe_step_id', $steps->pluck('id'))->orderBy('locale')->get()->groupBy('recipe_step_id');
         $stepMedia = DB::table('recipe_step_media')->whereIn('recipe_step_id', $steps->pluck('id'))->orderBy('sort_order')->orderBy('media_id')->get()->groupBy('recipe_step_id');
 
-        return [
+        $payload = [
             'recipe' => [
                 'prep_minutes' => (int) $recipe->prep_minutes,
                 'cook_minutes' => (int) $recipe->cook_minutes,
@@ -58,7 +66,8 @@ class RecipeRevisionSnapshotter
             ])->all(),
             'ingredients' => $lines->map(fn (object $line): array => [
                 'id' => (int) $line->id,
-                'ingredient_id' => (int) $line->ingredient_id,
+                'ingredient_id' => $line->ingredient_id !== null ? (int) $line->ingredient_id : null,
+                ...(isset($line->line_uuid) ? $this->componentFields((array) $line) : []),
                 'group_index' => $line->ingredient_group_id !== null ? ($groupIndex[$line->ingredient_group_id] ?? null) : null,
                 'quantity' => $this->decimal($line->quantity),
                 'quantity_max' => $this->decimal($line->quantity_max),
@@ -71,9 +80,17 @@ class RecipeRevisionSnapshotter
                     'quantity_text' => $row->quantity_text,
                 ]])->all(),
             ])->all(),
+            'yields' => ! Schema::hasTable('recipe_yields') ? [] : DB::table('recipe_yields')->where('recipe_id', $recipeId)->orderBy('basis')->get()->map(fn (object $yield): array => $this->yieldFields((array) $yield))->all(),
+            'step_groups' => $stepGroups->values()->map(fn (object $group, int $index): array => [
+                'id' => (int) $group->id, 'position' => $index,
+                'translations' => ($stepGroupTexts[$group->id] ?? collect())->mapWithKeys(fn (object $row): array => [
+                    $row->locale => ['title' => $row->title, 'description' => $row->description],
+                ])->all(),
+            ])->all(),
             'steps' => $steps->map(fn (object $step): array => [
                 'id' => (int) $step->id,
                 'step_number' => (int) $step->step_number,
+                'step_group_index' => isset($step->recipe_step_group_id) ? $stepGroupIndex[$step->recipe_step_group_id] : null,
                 'duration_minutes' => $step->duration_minutes !== null ? (int) $step->duration_minutes : null,
                 'translations' => ($stepTexts[$step->id] ?? collect())->mapWithKeys(fn (object $row): array => [$row->locale => ['instruction' => $row->instruction]])->all(),
                 'media' => ($stepMedia[$step->id] ?? collect())->map(fn (object $row): array => [
@@ -83,6 +100,25 @@ class RecipeRevisionSnapshotter
                 ])->all(),
             ])->all(),
         ];
+
+        // Earlier baseline migrations invoke this service before the v2 tables exist.
+        if (! Schema::hasTable('recipe_yields')) {
+            unset($payload['yields']);
+
+            return $payload;
+        }
+
+        // A fork inherits conversion definitions from its immutable provenance, not mutable unit rows.
+        if (Schema::hasTable('recipe_derivations')) {
+            $source = DB::table('recipe_derivations')->join('recipe_revisions', 'recipe_revisions.id', '=', 'recipe_derivations.source_recipe_revision_id')
+                ->where('recipe_derivations.recipe_id', $recipeId)->value('recipe_revisions.payload');
+            if ($source !== null) {
+                $source = is_string($source) ? json_decode($source, true, flags: JSON_THROW_ON_ERROR) : (array) $source;
+                $units += $source['units'] ?? [];
+            }
+        }
+
+        return [...$payload, 'units' => $this->snapshotUnits($payload, $units)];
     }
 
     /**
@@ -92,7 +128,7 @@ class RecipeRevisionSnapshotter
      */
     public function canonicalJson(array $payload): string
     {
-        foreach (['ingredient_groups', 'ingredients', 'steps'] as $collection) {
+        foreach (['ingredient_groups', 'ingredients', 'steps', ...(array_key_exists('step_groups', $payload) ? ['step_groups'] : [])] as $collection) {
             $payload[$collection] = array_map(function (array $row): array {
                 unset($row['id']);
 
@@ -229,7 +265,8 @@ class RecipeRevisionSnapshotter
 
         $ingredients = collect((array) ($payload['ingredients'] ?? []))->values()->map(fn (array $line, int $index): array => [
             'id' => $id($line['id'] ?? null),
-            'ingredient_id' => (int) ($line['ingredient_id'] ?? 0),
+            'ingredient_id' => ($line['line_type'] ?? 'ingredient') === 'recipe' ? null : (int) ($line['ingredient_id'] ?? 0),
+            ...$this->componentFields($line),
             'group_index' => isset($line['group_index'], $groups[$line['group_index']]) ? (int) $line['group_index'] : null,
             'quantity' => $this->decimal(filled($line['quantity'] ?? null) ? $line['quantity'] : null),
             'quantity_max' => $this->decimal(filled($line['quantity_max'] ?? null) ? $line['quantity_max'] : null),
@@ -243,9 +280,17 @@ class RecipeRevisionSnapshotter
             ]])->all(),
         ])->all();
 
+        $stepGroups = collect($payload['step_groups'] ?? [])->values()->map(fn (array $group, int $index): array => [
+            'id' => $id($group['id'] ?? null), 'position' => $index,
+            'translations' => collect($locales)->mapWithKeys(fn (string $locale): array => [$locale => [
+                'title' => (string) ($text($group['translations'][$locale]['title'] ?? null) ?? ''),
+                'description' => $text($group['translations'][$locale]['description'] ?? null),
+            ]])->all(),
+        ])->all();
         $steps = collect((array) ($payload['steps'] ?? []))->values()->map(fn (array $step, int $index): array => [
             'id' => $id($step['id'] ?? null),
             'step_number' => $index + 1,
+            'step_group_index' => filter_var($step['step_group_index'] ?? null, FILTER_VALIDATE_INT) !== false ? (int) $step['step_group_index'] : ($step['step_group_index'] ?? null),
             'duration_minutes' => $id($step['duration_minutes'] ?? null),
             'translations' => collect($locales)->mapWithKeys(fn (string $locale): array => [$locale => ['instruction' => (string) (((array) ($step['translations'] ?? []))[$locale]['instruction'] ?? '')]])->all(),
             'media' => collect((array) ($step['media'] ?? []))
@@ -257,7 +302,7 @@ class RecipeRevisionSnapshotter
                 ->all(),
         ])->all();
 
-        return [
+        $normalized = [
             'recipe' => [
                 'prep_minutes' => (int) ($recipe['prep_minutes'] ?? 0),
                 'cook_minutes' => (int) ($recipe['cook_minutes'] ?? 0),
@@ -272,7 +317,11 @@ class RecipeRevisionSnapshotter
             'ingredient_groups' => $groups,
             'ingredients' => $ingredients,
             'steps' => $steps,
+            'step_groups' => $stepGroups,
+            'yields' => collect($payload['yields'] ?? [])->sortBy('basis')->values()->map(fn (array $yield): array => $this->yieldFields($yield))->all(),
         ];
+
+        return [...$normalized, 'units' => $this->snapshotUnits($normalized, $payload['units'] ?? [])];
     }
 
     /**
@@ -290,6 +339,10 @@ class RecipeRevisionSnapshotter
             'steps' => DB::table('recipe_steps')->where('recipe_id', $recipeId)->pluck('id')->map(fn ($v): int => (int) $v)->all(),
         ];
 
+        if (array_key_exists('step_groups', $payload)) {
+            $live['step_groups'] = Schema::hasTable('recipe_step_groups')
+                ? DB::table('recipe_step_groups')->where('recipe_id', $recipeId)->pluck('id')->map(fn ($v): int => (int) $v)->all() : [];
+        }
         foreach ($live as $collection => $knownIds) {
             $seen = [];
             $payload[$collection] = array_map(function (array $row) use ($knownIds, &$seen): array {
@@ -302,6 +355,99 @@ class RecipeRevisionSnapshotter
 
                 return $row;
             }, array_values($payload[$collection] ?? []));
+        }
+
+        $lines = DB::table('recipe_ingredients')->where('recipe_id', $recipeId)->get()->keyBy('id');
+        foreach ($payload['ingredients'] as &$line) {
+            if (! isset($line['line_uuid']) && isset($line['id'])) {
+                $line['line_uuid'] = $lines->get($line['id'])?->line_uuid;
+            }
+            if (isset($line['line_uuid']) && DB::table('recipe_ingredients')->where('line_uuid', $line['line_uuid'])->where('recipe_id', '!=', $recipeId)->exists()) {
+                $line['line_uuid'] = (string) Str::uuid();
+            }
+        }
+        unset($line);
+
+        return $payload;
+    }
+
+    /** Pin conversion definitions; supplied historical definitions always win. */
+    private function snapshotUnits(array $payload, array $preferred = []): array
+    {
+        $ids = collect($payload['ingredients'] ?? [])->flatMap(fn (array $line): array => [$line['unit_id'] ?? null, $line['prepared_unit_id'] ?? null])
+            ->merge(collect($payload['yields'] ?? [])->pluck('unit_id'))->filter()->map(fn ($id): int => (int) $id)->unique()->sort()->values();
+        $missing = $ids->reject(fn (int $id): bool => array_key_exists($id, $preferred));
+        $live = $missing->isEmpty() ? collect() : DB::table('units')->whereIn('id', $missing)->get()->keyBy('id');
+        $units = [];
+        foreach ($ids as $id) {
+            if (array_key_exists($id, $preferred)) {
+                $units[$id] = $preferred[$id];
+
+                continue;
+            }
+            $unit = $live->get($id);
+            if ($unit !== null) {
+                $units[$id] = [
+                    'code' => $unit->code,
+                    'unit_type' => $unit->unit_type,
+                    'base_conversion' => $this->decimal($unit->base_conversion),
+                    'allow_fraction' => (bool) $unit->allow_fraction,
+                    'is_scalable' => (bool) $unit->is_scalable,
+                ];
+            }
+        }
+
+        return $units;
+    }
+
+    /** Typed v2 fields. Legacy line IDs give upgrades a repeatable identity. */
+    private function componentFields(array $line): array
+    {
+        $uuid = $line['line_uuid'] ?? (isset($line['id'])
+            ? (string) Uuid::uuid5(Uuid::NAMESPACE_URL, 'recipe-line:'.$line['id'])
+            : (string) Str::uuid());
+
+        return [
+            'line_uuid' => $uuid,
+            'line_type' => $line['line_type'] ?? 'ingredient',
+            'component_recipe_id' => isset($line['component_recipe_id']) ? (int) $line['component_recipe_id'] : null,
+            'component_recipe_revision_id' => isset($line['component_recipe_revision_id']) ? (int) $line['component_recipe_revision_id'] : null,
+            'quantity_basis' => $line['quantity_basis'] ?? null,
+            'shopping_mode' => $line['shopping_mode'] ?? null,
+            'prepared_ingredient_id' => isset($line['prepared_ingredient_id']) ? (int) $line['prepared_ingredient_id'] : null,
+            'prepared_quantity_per_batch' => $this->decimal($line['prepared_quantity_per_batch'] ?? null),
+            'prepared_unit_id' => isset($line['prepared_unit_id']) ? (int) $line['prepared_unit_id'] : null,
+        ];
+    }
+
+    private function yieldFields(array $yield): array
+    {
+        return [
+            'basis' => $yield['basis'],
+            'quantity' => $this->decimal($yield['quantity']),
+            'unit_id' => (int) $yield['unit_id'],
+            'evidence' => is_string($yield['evidence']) ? json_decode($yield['evidence'], true, flags: JSON_THROW_ON_ERROR) : $yield['evidence'],
+            'verified_by' => (int) $yield['verified_by'],
+            'verified_at' => Carbon::parse($yield['verified_at'])->utc()->format('Y-m-d H:i:s'),
+        ];
+    }
+
+    /** Project live v2 content when checking an immutable v1 revision. */
+    public function forSchema(array $payload, int $version): array
+    {
+        if ($version < 3) {
+            unset($payload['step_groups']);
+            foreach ($payload['steps'] ?? [] as $index => $step) {
+                unset($payload['steps'][$index]['step_group_index']);
+            }
+        }
+        if ($version < 2) {
+            unset($payload['yields'], $payload['units']);
+            foreach ($payload['ingredients'] as &$line) {
+                foreach (['line_uuid', 'line_type', 'component_recipe_id', 'component_recipe_revision_id', 'quantity_basis', 'shopping_mode', 'prepared_ingredient_id', 'prepared_quantity_per_batch', 'prepared_unit_id'] as $field) {
+                    unset($line[$field]);
+                }
+            }
         }
 
         return $payload;

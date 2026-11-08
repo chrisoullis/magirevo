@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\DietaryClaimVisibility;
 use App\Services\HouseholdAccess;
 use App\Services\MealPlanService;
+use App\Services\RecipeComponentResolver;
 use App\Services\ShoppingListService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -27,6 +28,8 @@ use Livewire\Component;
 class WhatCanICook extends Component
 {
     private const RESULT_LIMIT = 60;
+
+    private array $resolvedCandidates = [];
 
     #[Locked]
     public string $locale = 'en';
@@ -125,14 +128,12 @@ class WhatCanICook extends Component
         $selectedIngredientIds = $this->selectedIngredients()
             ->map(fn (Ingredient $ingredient): int => (int) $ingredient->getKey())
             ->all();
-        $lineExists = RecipeIngredient::query()
-            ->where('recipe_id', $recipe->getKey())
-            ->where('ingredient_id', $ingredientId)
-            ->where('is_optional', false)
-            ->exists();
+        $resolved = app(RecipeComponentResolver::class)->resolve($recipe, $this->currentUser(), purpose: 'discovery');
+        $matchingLines = collect($resolved['lines'])->filter(fn ($line) => ! $line->isOptional && $line->ingredientId === $ingredientId);
+        $lineExists = $resolved['unresolved'] === [] && $matchingLines->isNotEmpty();
         $substitution = IngredientSubstitution::query()
             ->approved()
-            ->applicableToRecipe((int) $recipe->getKey())
+            ->where(fn ($scope) => $scope->whereNull('recipe_id')->orWhereIn('recipe_id', $matchingLines->map(fn ($line) => $line->source['recipe_id'])->unique()))
             ->whereKey($substitutionId)
             ->where('ingredient_id', $ingredientId)
             ->first();
@@ -140,6 +141,7 @@ class WhatCanICook extends Component
         abort_unless(
             $lineExists
                 && $substitution !== null
+                && $matchingLines->every(fn ($line): bool => $substitution->appliesToResolvedSource((array) $line->source))
                 && in_array((int) $substitution->replacement_ingredient_id, $selectedIngredientIds, true),
             404,
         );
@@ -150,10 +152,13 @@ class WhatCanICook extends Component
         $choices = is_array($choices) ? $choices : [];
         unset($choices[$ingredientId], $choices[(string) $ingredientId]);
         $choices = $plans->validatedSubstitutionChoices($recipe, $choices);
-        $choices[$ingredientId] = [
-            'substitution_id' => $substitutionId,
-            'replacement_ingredient_id' => (int) $substitution->replacement_ingredient_id,
-        ];
+        foreach ($matchingLines as $line) {
+            $choices[$line->source['recipe_ingredient_id']] = [
+                'substitution_id' => $substitutionId,
+                'replacement_ingredient_id' => (int) $substitution->replacement_ingredient_id,
+            ];
+        }
+        $choices = $plans->validatedSubstitutionChoices($recipe, $choices);
         $this->confirmedSubstitutions[$recipeId] = $choices;
     }
 
@@ -161,6 +166,10 @@ class WhatCanICook extends Component
     {
         $choices = $this->confirmedSubstitutions[$recipeId] ?? $this->confirmedSubstitutions[(string) $recipeId] ?? [];
         $choices = is_array($choices) ? $choices : [];
+        $rowIds = RecipeIngredient::whereIn('id', array_keys($choices))->where('ingredient_id', $ingredientId)->pluck('id')->all();
+        foreach ($rowIds as $rowId) {
+            unset($choices[$rowId]);
+        }
         unset($choices[$ingredientId], $choices[(string) $ingredientId]);
 
         if ($choices === []) {
@@ -206,42 +215,18 @@ class WhatCanICook extends Component
             return;
         }
 
-        $requiredIngredientIds = RecipeIngredient::query()
-            ->where('recipe_id', $recipe->getKey())
-            ->where('is_optional', false)
-            ->distinct()
-            ->pluck('ingredient_id')
-            ->map(fn (int|string $id): int => (int) $id);
-        $missingIngredientIds = $requiredIngredientIds
-            ->reject(fn (int $ingredientId): bool => in_array($ingredientId, $selectedIngredientIds, true))
-            ->map(function (int $ingredientId) use ($confirmedSubstitutions, $selectedIngredientIds, $recipe): ?int {
-                $choice = $confirmedSubstitutions[$ingredientId] ?? null;
-
-                if ($choice === null) {
-                    return $ingredientId;
-                }
-
-                $replacementId = IngredientSubstitution::query()
-                    ->approved()
-                    ->applicableToRecipe((int) $recipe->getKey())
-                    ->whereKey($choice['substitution_id'])
-                    ->where('ingredient_id', $ingredientId)
-                    ->where('replacement_ingredient_id', $choice['replacement_ingredient_id'])
-                    ->value('replacement_ingredient_id');
-
-                if ($replacementId === null) {
-                    return $ingredientId;
-                }
-
-                if (in_array((int) $replacementId, $selectedIngredientIds, true)) {
+        $resolved = app(RecipeComponentResolver::class)->resolve($recipe, $user, purpose: 'discovery');
+        abort_unless($resolved['unresolved'] === [], 404);
+        $missingIngredientIds = collect($resolved['lines'])->reject(fn ($line) => $line->isOptional)
+            ->map(function ($line) use ($confirmedSubstitutions, $selectedIngredientIds): ?int {
+                if (in_array($line->ingredientId, $selectedIngredientIds, true)) {
                     return null;
                 }
+                $choice = $confirmedSubstitutions[$line->source['recipe_ingredient_id'] ?? 0] ?? null;
+                $required = $choice['replacement_ingredient_id'] ?? $line->ingredientId;
 
-                return (int) $replacementId;
-            })
-            ->filter()
-            ->unique()
-            ->values();
+                return in_array($required, $selectedIngredientIds, true) ? null : $required;
+            })->filter()->unique()->values();
         $missingIngredients = Ingredient::query()->whereIn('id', $missingIngredientIds)->get();
         $addedCount = $shoppingLists->addMissingIngredients($user, $list, $missingIngredients);
 
@@ -384,6 +369,7 @@ class WhatCanICook extends Component
             ->where('is_active', true)
             ->where(fn (Builder $ingredients): Builder => $ingredients
                 ->whereHas('recipeIngredients.recipe', fn (Builder $recipes): Builder => $this->availableRecipes($recipes))
+                ->orWhereExists(fn ($prepared) => $prepared->selectRaw('1')->from('recipe_ingredients')->whereColumn('recipe_ingredients.prepared_ingredient_id', 'ingredients.id')->whereIn('recipe_ingredients.recipe_id', $this->availableRecipes()->select('recipes.id')))
                 ->orWhereHas('substitutionSuggestions', fn (Builder $substitutions): Builder => $substitutions
                     ->approved()
                     ->whereHas('ingredient.recipeIngredients.recipe', fn (Builder $recipes): Builder => $this->availableRecipes($recipes))
@@ -477,56 +463,15 @@ class WhatCanICook extends Component
      */
     private function matchingRecipes(array $selectedIngredientIds): Collection
     {
-        $requiredCounts = RecipeIngredient::query()
-            ->select('recipe_id')
-            ->selectRaw('COUNT(DISTINCT ingredient_id) AS required_count')
-            ->where('is_optional', false)
-            ->whereHas('recipe', fn (Builder $recipes): Builder => $this->availableRecipes($recipes))
-            ->groupBy('recipe_id');
-        $matchedCounts = RecipeIngredient::query()
-            ->select('recipe_id')
-            ->selectRaw('COUNT(DISTINCT ingredient_id) AS matched_count')
-            ->where('is_optional', false)
-            ->where(function (Builder $matches) use ($selectedIngredientIds): void {
-                $matches->whereIn('ingredient_id', $selectedIngredientIds)
-                    ->orWhereExists(function (\Illuminate\Database\Query\Builder $substitutions) use ($selectedIngredientIds): void {
-                        $substitutions->selectRaw('1')
-                            ->from('ingredient_substitutions')
-                            ->whereColumn('ingredient_substitutions.ingredient_id', 'recipe_ingredients.ingredient_id')
-                            ->where('ingredient_substitutions.status', 'approved')
-                            ->whereIn('ingredient_substitutions.replacement_ingredient_id', $selectedIngredientIds)
-                            ->where(fn (\Illuminate\Database\Query\Builder $applicable): \Illuminate\Database\Query\Builder => $applicable
-                                ->whereNull('ingredient_substitutions.recipe_id')
-                                ->orWhereColumn('ingredient_substitutions.recipe_id', 'recipe_ingredients.recipe_id'));
-                    });
-            })
-            ->whereHas('recipe', fn (Builder $recipes): Builder => $this->availableRecipes($recipes))
-            ->groupBy('recipe_id');
-        $exactCounts = RecipeIngredient::query()
-            ->select('recipe_id')
-            ->selectRaw('COUNT(DISTINCT ingredient_id) AS exact_count')
-            ->where('is_optional', false)
-            ->whereIn('ingredient_id', $selectedIngredientIds)
-            ->whereHas('recipe', fn (Builder $recipes): Builder => $this->availableRecipes($recipes))
-            ->groupBy('recipe_id');
         $query = $this->availableRecipes()
-            ->leftJoinSub($requiredCounts, 'required_ingredients', 'required_ingredients.recipe_id', '=', 'recipes.id')
-            ->leftJoinSub($matchedCounts, 'matched_ingredients', 'matched_ingredients.recipe_id', '=', 'recipes.id')
-            ->leftJoinSub($exactCounts, 'exact_ingredients', 'exact_ingredients.recipe_id', '=', 'recipes.id')
-            ->whereHas('translations', fn (Builder $translations): Builder => $translations
-                ->where('locale', $this->locale)
-                ->where('title', '<>', '')
-                ->where('slug', '<>', ''))
-            ->select('recipes.*')
-            ->selectRaw('COALESCE(required_ingredients.required_count, 0) AS required_ingredients_count')
-            ->selectRaw('COALESCE(matched_ingredients.matched_count, 0) AS matched_ingredients_count')
-            ->selectRaw('COALESCE(exact_ingredients.exact_count, 0) AS exact_ingredients_count')
-            ->with('translations')
-            ->where('matched_ingredients.matched_count', '>', 0)
-            ->orderByRaw('(COALESCE(required_ingredients.required_count, 0) - COALESCE(matched_ingredients.matched_count, 0))')
-            ->orderByRaw('CASE WHEN COALESCE(required_ingredients.required_count, 0) = 0 THEN 1 ELSE COALESCE(matched_ingredients.matched_count, 0)::numeric / required_ingredients.required_count END DESC')
-            ->orderBy('recipes.id')
-            ->limit(self::RESULT_LIMIT * 5);
+            ->whereHas('translations', fn (Builder $translations): Builder => $translations->where('locale', $this->locale)->where('title', '<>', '')->where('slug', '<>', ''))
+            ->whereHas('recipeIngredients', function (Builder $lines) use ($selectedIngredientIds): void {
+                $lines->where('line_type', 'recipe')->orWhere(function (Builder $leaves) use ($selectedIngredientIds): void {
+                    $leaves->where('is_optional', false)->where(fn (Builder $matches) => $matches->whereIn('ingredient_id', $selectedIngredientIds)
+                        ->orWhereExists(fn ($options) => $options->selectRaw('1')->from('ingredient_substitutions')->whereColumn('ingredient_substitutions.ingredient_id', 'recipe_ingredients.ingredient_id')->where('status', 'approved')->whereIn('replacement_ingredient_id', $selectedIngredientIds)));
+                });
+            })
+            ->with('translations')->orderBy('recipes.id')->limit(self::RESULT_LIMIT * 5);
 
         $categoryId = $this->publicCategoryId();
 
@@ -556,7 +501,11 @@ class WhatCanICook extends Component
             );
         }
 
-        return $query->get();
+        $candidates = $query->get();
+        $details = $this->ingredientMatchDetails($candidates, $selectedIngredientIds);
+
+        return $candidates->filter(fn ($recipe) => $details->has($recipe->id) && ($details[$recipe->id]['matchedCount'] > 0 || collect($details[$recipe->id]['ingredientOptions'])->contains(fn ($option) => collect($option['options'])->contains('selected', true))))
+            ->sortBy(fn ($recipe) => [$details[$recipe->id]['missingCount'], -$details[$recipe->id]['coverage'], $recipe->id])->values();
     }
 
     /**
@@ -570,14 +519,24 @@ class WhatCanICook extends Component
             return collect();
         }
 
-        $linesByRecipe = RecipeIngredient::query()
-            ->whereIn('recipe_id', $recipes->modelKeys())
-            ->where('is_optional', false)
-            ->with('ingredient.translations')
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get()
-            ->groupBy('recipe_id');
+        $resolvedByRecipe = [];
+        $resolver = app(RecipeComponentResolver::class);
+        foreach ($recipes as $recipe) {
+            $result = $this->resolvedCandidates[$recipe->id] ??= $resolver->resolve($recipe, $this->currentUser(), purpose: 'discovery');
+            if ($result['unresolved'] === []) {
+                $resolvedByRecipe[$recipe->id] = collect($result['lines'])->reject(fn ($line) => $line->isOptional);
+            }
+        }
+        $ingredients = Ingredient::whereIn('id', collect($resolvedByRecipe)->flatten(1)->map(fn ($line) => $line->ingredientId)->unique())->with(['translations', 'catalogGroup.translations'])->get()->keyBy('id');
+        $linesByRecipe = collect($resolvedByRecipe)->map(fn ($lines) => $lines->map(function ($line) use ($ingredients) {
+            $row = new RecipeIngredient(['ingredient_id' => $line->ingredientId, 'recipe_id' => $line->source['recipe_id']]);
+            $row->id = $line->source['recipe_ingredient_id'] ?? 0;
+            $row->resolved_revision_id = $line->source['recipe_revision_id'] ?? null;
+            $row->resolved_revision_status = $line->source['recipe_revision_status'] ?? null;
+            $row->setRelation('ingredient', $ingredients->get($line->ingredientId));
+
+            return $row;
+        })->filter(fn ($row) => $row->ingredient !== null));
         $originalIngredientIds = $linesByRecipe->flatten(1)->pluck('ingredient_id')->unique()->values();
         $substitutionsByIngredient = $originalIngredientIds->isEmpty()
             ? collect()
@@ -585,12 +544,12 @@ class WhatCanICook extends Component
                 ->approved()
                 ->whereIn('ingredient_id', $originalIngredientIds)
                 ->whereHas('replacementIngredient', fn (Builder $replacement): Builder => $replacement->where('is_active', true))
-                ->applicableToRecipes($recipes->modelKeys())
+                ->where(fn (Builder $scope) => $scope->whereNull('recipe_id')->orWhereIn('recipe_id', $linesByRecipe->flatten(1)->pluck('recipe_id')->unique()->all()))
                 ->with(['translations', 'replacementIngredient.translations', 'replacementIngredient.catalogGroup.translations'])
                 ->get()
                 ->groupBy('ingredient_id');
 
-        return $recipes->mapWithKeys(function (Recipe $recipe) use ($linesByRecipe, $substitutionsByIngredient, $selectedIngredientIds): array {
+        return $recipes->filter(fn ($recipe) => $linesByRecipe->has($recipe->id))->mapWithKeys(function (Recipe $recipe) use ($linesByRecipe, $substitutionsByIngredient, $selectedIngredientIds): array {
             $linesByIngredient = $linesByRecipe->get($recipe->getKey(), collect())->groupBy('ingredient_id');
             $recipeChoices = $this->confirmedSubstitutions[$recipe->getKey()]
                 ?? $this->confirmedSubstitutions[(string) $recipe->getKey()]
@@ -608,15 +567,16 @@ class WhatCanICook extends Component
                 $originalId = (int) $ingredientId;
                 $exactMatch = in_array($originalId, $selectedIngredientIds, true);
                 $options = $substitutionsByIngredient->get($originalId, collect())
-                    ->filter(fn (IngredientSubstitution $substitution): bool => $substitution->recipe_id === null
-                        || (int) $substitution->recipe_id === (int) $recipe->getKey())
-                    ->map(function (IngredientSubstitution $substitution) use ($originalId, $selectedIngredientIds, $recipeChoices): array {
+                    ->filter(fn (IngredientSubstitution $substitution): bool => $lines->every(fn ($row): bool => $substitution->appliesToResolvedSource(['recipe_id' => $row->recipe_id,
+                        'recipe_revision_id' => $row->resolved_revision_id, 'recipe_revision_status' => $row->resolved_revision_status])))
+                    ->map(function (IngredientSubstitution $substitution) use ($selectedIngredientIds, $recipeChoices, $lines): array {
                         $replacementId = (int) $substitution->replacement_ingredient_id;
                         $selected = in_array($replacementId, $selectedIngredientIds, true);
-                        $confirmedChoice = $recipeChoices[$originalId] ?? $recipeChoices[(string) $originalId] ?? null;
-                        $confirmed = is_array($confirmedChoice)
-                            && (string) ($confirmedChoice['substitution_id'] ?? '') === (string) $substitution->getKey()
-                            && (int) ($confirmedChoice['replacement_ingredient_id'] ?? 0) === $replacementId;
+                        $confirmed = $lines->every(function ($line) use ($recipeChoices, $substitution, $replacementId): bool {
+                            $choice = $recipeChoices[$line->id] ?? null;
+
+                            return is_array($choice) && (int) ($choice['substitution_id'] ?? 0) === $substitution->id && (int) ($choice['replacement_ingredient_id'] ?? 0) === $replacementId;
+                        });
 
                         return [
                             'id' => (int) $substitution->getKey(),

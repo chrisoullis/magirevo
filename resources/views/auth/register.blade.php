@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Join the table | The Sunday Table')
+@section('title', 'Join the table | My Kitchen')
 @section('meta_description', 'Create your free Sunday Table account to save recipes and build your personal recipe box.')
 
 @section('content')

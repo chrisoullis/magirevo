@@ -173,7 +173,10 @@ class DietaryClaimsTest extends TestCase
         Livewire::test(RecipeIndex::class, ['locale' => 'en'])
             ->assertViewHas('tags', fn ($tags) => $tags->pluck('code')->contains('vegetarian'))
             ->set('tag', 'vegetarian')
-            ->assertViewHas('recipes', fn ($recipes) => $recipes->count() === 1);
+            ->assertViewHas('recipes', fn ($recipes) => $recipes->count() === 1)
+            ->set('tag', '')->set('dietary', 'vegetarian')
+            ->assertViewHas('recipes', fn ($recipes) => $recipes->modelKeys() === [$recipe->id])
+            ->assertViewHas('recipeClaims', fn ($claims) => ($claims[$recipe->id] ?? []) === ['Vegetarian Label']);
 
         $this->get($this->url($recipe))->assertOk()
             ->assertSee(__('site.dietary_information'))
@@ -622,6 +625,7 @@ class DietaryClaimsTest extends TestCase
         $this->assertSame(DietaryClaimStatus::Approved, $claim->fresh()->status);
         $this->assertCount(0, app(DietaryClaimVisibility::class)->publicClaims($recipe));
         Livewire::test(RecipeIndex::class, ['locale' => 'en'])->set('tag', 'vegetarian')->assertViewHas('recipes', fn ($recipes) => $recipes->isEmpty());
+        Livewire::test(RecipeIndex::class, ['locale' => 'en'])->set('dietary', 'vegetarian')->assertViewHas('recipes', fn ($recipes) => $recipes->isEmpty())->assertViewHas('recipeClaims', []);
     }
 
     public function test_changing_the_rule_version_invalidates_approvals(): void

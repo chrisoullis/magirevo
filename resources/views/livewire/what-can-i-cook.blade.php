@@ -34,13 +34,11 @@
         @error('ingredientSearch')<p class="field-error">{{ $message }}</p>@enderror
 
         @if ($ingredientOptions->isNotEmpty())
-            <div id="what-cook-ingredient-options" class="what-cook-options" role="listbox" aria-label="{{ __('site.cooking_search_label') }}">
+            <div id="what-cook-ingredient-options" class="what-cook-options" role="group" aria-label="{{ __('site.cooking_search_label') }}">
                 @foreach ($ingredientOptions as $ingredient)
                     <button
                         class="what-cook-option"
                         type="button"
-                        role="option"
-                        aria-selected="false"
                         wire:key="ingredient-option-{{ $ingredient['id'] }}"
                         wire:click="selectIngredient({{ $ingredient['id'] }})"
                         wire:loading.attr="disabled"

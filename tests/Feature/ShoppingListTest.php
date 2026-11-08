@@ -17,6 +17,7 @@ use App\Models\ShoppingListItem;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\MealPlanService;
+use App\Services\RecipeRevisionService;
 use App\Services\ShoppingListService;
 use Database\Seeders\AdditionalUnitSeeder;
 use Database\Seeders\UnitSeeder;
@@ -134,6 +135,8 @@ class ShoppingListTest extends TestCase
             'ingredient_id' => $original->getKey(),
             'replacement_ingredient_id' => $replacement->getKey(),
         ]);
+        app(RecipeRevisionService::class)->syncPublishedFromLive($recipe->id);
+        $recipe->refresh();
         $entry = app(MealPlanService::class)->addEntry(
             $user,
             $plan,

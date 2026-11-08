@@ -30,6 +30,6 @@ return [
         'rejected_subject' => 'Your contributor application',
         'rejected_line' => 'Thank you for applying. We could not approve your contributor application this time.',
         'rejected_reason' => 'Reason: :reason',
-        'open_action' => 'Open The Sunday Table',
+        'open_action' => 'Open My Kitchen',
     ],
 ];

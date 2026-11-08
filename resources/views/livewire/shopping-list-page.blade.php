@@ -1,4 +1,4 @@
-<div class="flex flex-col gap-6" @if ($household) wire:poll.30s @endif>
+<div class="kitchen-module shopping-module flex flex-col gap-6" @if ($household) wire:poll.30s @endif>
     <header class="flex flex-col gap-2">
         <a class="text-link inline-flex min-h-11 items-center" href="{{ $household ? route('households.planner', ['locale' => $locale, 'household' => $household->id, 'week' => $start->toDateString()], false) : route('planner.index', ['locale' => $locale, 'week' => $start->toDateString()], false) }}">&larr; {{ __('planner.shopping.back_to_plan') }}</a>
         <h1 class="text-3xl leading-tight break-words">{{ $household ? __('planner.shopping.household_heading', ['name' => $household->name]) : __('planner.shopping.heading') }}</h1>
@@ -13,6 +13,27 @@
     @if (! $plan)
         <p>{{ __('planner.shopping.no_plan') }}</p>
     @else
+        @foreach ($componentChoices as $choice)
+            <fieldset class="rounded border p-3">
+                <legend>{{ __('nested_planner.components') }} · {{ __('nested_planner.servings', ['count' => $choice['servings']]) }}</legend>
+                @foreach ($choice['components'] as $component)
+                    <label class="flex items-center gap-3" wire:key="component-{{ $choice['entry_id'] }}-{{ $component['path'] }}">
+                        <span>{{ $component['title'] }}</span>
+                        <select @disabled(! $canEdit) wire:change="setComponentMode({{ $choice['entry_id'] }}, '{{ $component['path'] }}', $event.target.value)">
+                            <option value="scratch" @selected($component['shopping_mode'] === 'scratch')>{{ __('nested_planner.scratch') }}</option>
+                            <option value="prepared" @disabled(! $component['can_use_prepared']) @selected($component['shopping_mode'] === 'prepared')>{{ __('nested_planner.prepared') }}</option>
+                        </select>
+                    </label>
+                @endforeach
+            </fieldset>
+        @endforeach
+        @if ($items->isNotEmpty())
+            @php($checkedCount = $items->where('checked', true)->count())
+            <div class="shopping-progress" role="status">
+                <label for="shopping-progress">{{ __('kitchen.shopping_progress', ['checked' => $checkedCount, 'total' => $items->count()]) }}</label>
+                <progress id="shopping-progress" value="{{ $checkedCount }}" max="{{ $items->count() }}">{{ $checkedCount }} / {{ $items->count() }}</progress>
+            </div>
+        @endif
         @if ($canEdit)
             <div class="flex flex-col gap-1">
                 <button class="button button-dark min-h-11 self-start" type="button" wire:click="generate" wire:loading.attr="disabled">{{ $list?->last_generated_at ? __('planner.shopping.regenerate') : __('planner.shopping.generate') }}</button>

@@ -16,6 +16,7 @@ use App\Support\AppPermissions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class RecipeForkService
@@ -61,7 +62,7 @@ class RecipeForkService
             return $this->quota->withinPersonalQuota($user, function () use ($user, $source, $permission, $revision, $key, $fingerprint): Recipe {
                 $payload = $revision->payload;
                 unset($payload['media']);
-                foreach (['ingredient_groups', 'ingredients', 'steps'] as $collection) {
+                foreach (['ingredient_groups', 'ingredients', 'steps', ...(isset($payload['step_groups']) ? ['step_groups'] : [])] as $collection) {
                     foreach ($payload[$collection] as &$row) {
                         unset($row['id'], $row['media']);
                     }
@@ -83,6 +84,7 @@ class RecipeForkService
                 }
                 unset($step);
                 foreach ($payload['ingredients'] as &$line) {
+                    $line['line_uuid'] = (string) Str::uuid();
                     foreach ($line['translations'] as &$translation) {
                         foreach ($translation as &$value) {
                             $value = $this->text->clean($value);
@@ -96,13 +98,18 @@ class RecipeForkService
                     $group['names'] = array_map(fn ($value) => $this->text->clean($value), $group['names']);
                 }
                 unset($group);
+                foreach ($payload['step_groups'] ?? [] as $index => $group) {
+                    foreach ($group['translations'] as $locale => $translation) {
+                        $payload['step_groups'][$index]['translations'][$locale] = array_map(fn ($value) => $this->text->clean($value), $translation);
+                    }
+                }
                 $payload['category_ids'] = Category::query()->publiclyVisible()->whereIn('id', $payload['category_ids'])->pluck('id')->all();
                 $payload['tag_ids'] = Tag::query()->where('is_active', true)->whereIn('classification', TagClassification::freelyPublicValues())->whereIn('id', $payload['tag_ids'])->pluck('id')->all();
 
                 $recipe = new Recipe(['author_id' => $user->id, 'visibility' => 'private', 'status' => 'draft']);
                 $recipe->derived_from_recipe_id = $source->id;
                 $recipe->save();
-                $this->content->write($recipe, $payload);
+                $this->content->write($recipe, $payload, $user);
                 $provenance = new RecipeDerivation;
                 $provenance->forceFill([
                     'recipe_id' => $recipe->id,

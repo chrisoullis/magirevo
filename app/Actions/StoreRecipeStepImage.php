@@ -7,6 +7,7 @@ use App\Models\Recipe;
 use App\Models\RecipeStep;
 use App\Services\RecipeMediaStorage;
 use App\Services\RecipeStepImageOptimizer;
+use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -24,6 +25,15 @@ class StoreRecipeStepImage
      * @param  array{en: array{alt_text: string, caption: ?string}, el: array{alt_text: string, caption: ?string}}  $translations
      */
     public function handle(Recipe $recipe, RecipeStep $step, UploadedFile $file, array $translations, int $sortOrder): Media
+    {
+        return $this->store($file, $translations,
+            fn (Media $media) => $step->media()->attach($media, ['kind' => 'image', 'sort_order' => $sortOrder]),
+            $this->storage->diskFor($recipe),
+        );
+    }
+
+    /** Stores optimized step media; the caller authorizes and attaches it inside the callback. */
+    public function store(UploadedFile $file, array $translations, Closure $within, string $disk): Media
     {
         Validator::make(['file' => $file], [
             'file' => [
@@ -44,8 +54,8 @@ class StoreRecipeStepImage
                 $optimizedFile,
                 $translations,
                 'recipe-step-media',
-                fn (Media $media) => $step->media()->attach($media, ['kind' => 'image', 'sort_order' => $sortOrder]),
-                $this->storage->diskFor($recipe),
+                $within,
+                $disk,
             );
         } finally {
             if (is_file($temporaryPath) && ! unlink($temporaryPath)) {

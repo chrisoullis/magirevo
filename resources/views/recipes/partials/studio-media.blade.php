@@ -1,0 +1,2 @@
+@php($mediaReview = $this->reviewData())
+<div><p>{{ __('studio.media_help') }}</p><div class="studio-preview-images">@foreach ($mediaReview['images']->where('media_type', 'image') as $image)<figure><img src="{{ $image->publicUrl() }}" alt="{{ $image->getTranslation($this->locale, false)?->alt_text }}" width="160" height="120" loading="lazy">@if ($image->getTranslation($this->locale, false)?->caption)<figcaption>{{ $image->getTranslation($this->locale, false)->caption }}</figcaption>@endif</figure>@endforeach</div></div>

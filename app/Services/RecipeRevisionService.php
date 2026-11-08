@@ -2,17 +2,21 @@
 
 namespace App\Services;
 
+use App\Actions\DeleteMediaIfUnused;
 use App\Enums\RecipeRevisionStatus;
 use App\Enums\RecipeVisibility;
+use App\Models\Media;
 use App\Models\Recipe;
 use App\Models\RecipeRevision;
 use App\Models\RecipeRevisionAudit;
 use App\Models\User;
 use App\Services\Recipes\RecipeVariationPublishingService;
 use Closure;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -83,7 +87,7 @@ class RecipeRevisionService
 
                 $payload = $from !== null
                     ? $this->snapshotter->rebaseIds($from->payload, $recipe->getKey())
-                    : $current->payload;
+                    : $this->snapshotter->rebaseIds($current->payload, $recipe->getKey());
                 $payload = $this->snapshotter->normalize($payload);
 
                 $revision = RecipeRevision::query()->create([
@@ -111,18 +115,125 @@ class RecipeRevisionService
         }
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    public function saveDraft(User $actor, RecipeRevision $revision, array $payload): RecipeRevision
+    /** Capture readable private content without changing its visibility or published pointer. */
+    public function captureComponentSnapshot(User $actor, Recipe $recipe): RecipeRevision
+    {
+        $this->authorizeComponentCapture($actor, $recipe);
+
+        return DB::transaction(function () use ($actor, $recipe): RecipeRevision {
+            $this->lockRecipe($recipe->getKey());
+            $recipe->refresh();
+            $this->authorizeComponentCapture($actor, $recipe);
+            $payload = $this->snapshotter->serialize($recipe->getKey());
+            app(RecipeComponentResolver::class)->assertValidPayload($payload, $recipe->getKey(), $actor, false);
+            $hash = $this->snapshotter->hash($payload);
+            $media = $this->mediaColumns($payload, null);
+            $existing = RecipeRevision::query()->where('recipe_id', $recipe->getKey())
+                ->where('status', RecipeRevisionStatus::Retained->value)
+                ->where('schema_version', RecipeRevisionSnapshotter::SCHEMA_VERSION)
+                ->where('content_hash', $hash)
+                ->where('media_snapshot_hash', $media['media_snapshot_hash'])
+                ->orderByDesc('revision_number')->first();
+
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            // The insert trigger records dependencies atomically, without occupying the open-draft slot.
+            $revision = RecipeRevision::query()->create([
+                'recipe_id' => $recipe->getKey(),
+                'revision_number' => $this->nextNumber($recipe->getKey()),
+                'status' => RecipeRevisionStatus::Retained->value,
+                'payload' => $payload,
+                ...$media,
+                'schema_version' => RecipeRevisionSnapshotter::SCHEMA_VERSION,
+                'content_hash' => $hash,
+                'created_by' => $actor->getKey(),
+            ]);
+            $this->retainMedia($revision);
+            $this->audit($revision, $actor->getKey(), 'retained', null, RecipeRevisionStatus::Retained, null);
+
+            return $revision;
+        });
+    }
+
+    private function authorizeComponentCapture(User $actor, Recipe $recipe): void
+    {
+        // Capture validates the graph separately so authorized owners receive actionable errors.
+        // Public reads still use the policy's complete, fail-closed graph check.
+        if (! app(RecipeAccessService::class)->canViewDirect($actor, $recipe)) {
+            throw new AuthorizationException;
+        }
+    }
+
+    /** Must run while the parent is still a draft, before its graph becomes immutable. */
+    public function indexDependencies(RecipeRevision $revision, ?array $payload = null): void
+    {
+        $this->assertStatus($revision, RecipeRevisionStatus::Draft);
+        if (! Schema::hasTable('recipe_revision_dependencies')) {
+            return;
+        }
+        DB::table('recipe_revision_dependencies')->where('recipe_revision_id', $revision->getKey())->delete();
+        foreach (($payload ?? $revision->payload)['ingredients'] ?? [] as $line) {
+            if (($line['line_type'] ?? 'ingredient') !== 'recipe') {
+                continue;
+            }
+            DB::table('recipe_revision_dependencies')->insert([
+                'recipe_revision_id' => $revision->getKey(),
+                'line_uuid' => $line['line_uuid'],
+                'component_recipe_id' => $line['component_recipe_id'],
+                'component_recipe_revision_id' => $line['component_recipe_revision_id'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    /** Creates dependency rows before freezing a newly published revision. */
+    private function createPublished(array $attributes): RecipeRevision
+    {
+        // Empty graphs need no draft phase and must not conflict with an existing editorial draft.
+        if (! collect($attributes['payload']['ingredients'] ?? [])->contains(fn (array $line): bool => ($line['line_type'] ?? 'ingredient') === 'recipe')) {
+            return RecipeRevision::query()->create($attributes);
+        }
+        $revision = RecipeRevision::query()->create([...$attributes, 'status' => RecipeRevisionStatus::Draft->value]);
+        $this->indexDependencies($revision);
+        $revision->update(['status' => RecipeRevisionStatus::Published->value]);
+
+        return $revision;
+    }
+
+    public function draftVersion(RecipeRevision $revision): string
+    {
+        return hash('sha256', $revision->content_hash.':'.$revision->media_snapshot_hash);
+    }
+
+    /** @param array<string, mixed> $payload */
+    public function saveDraft(User $actor, RecipeRevision $revision, array $payload, ?string $expectedVersion = null): RecipeRevision
     {
         Gate::forUser($actor)->authorize('edit', $revision);
 
-        return DB::transaction(function () use ($actor, $revision, $payload): RecipeRevision {
+        return DB::transaction(function () use ($actor, $revision, $payload, $expectedVersion): RecipeRevision {
             $this->lockRecipe($revision->recipe_id);
             $revision = $this->lockRevision($revision);
             $this->assertStatus($revision, RecipeRevisionStatus::Draft);
 
+            if ($expectedVersion !== null && ! hash_equals($this->draftVersion($revision), $expectedVersion)) {
+                throw ValidationException::withMessages(['draft' => __('editor.stale')]);
+            }
+
+            // Older editors omit v2 metadata. Keep the pinned graph and durable identities when absent.
+            foreach (['yields', 'units'] as $field) {
+                if (! array_key_exists($field, $payload)) {
+                    $payload[$field] = $revision->payload[$field] ?? [];
+                }
+            }
+            $previous = collect($revision->payload['ingredients'] ?? [])->filter(fn (array $line): bool => isset($line['id']))->keyBy('id');
+            foreach ($payload['ingredients'] ?? [] as $index => $line) {
+                if (isset($line['id']) && $previous->has($line['id'])) {
+                    $payload['ingredients'][$index] = [...$previous->get($line['id']), ...$line];
+                }
+            }
             $normalized = $this->snapshotter->normalize($payload);
             $hash = $this->snapshotter->hash($normalized);
             $media = $this->mediaColumns($normalized, $revision->media_snapshot);
@@ -131,7 +242,7 @@ class RecipeRevisionService
                 return $revision;
             }
 
-            $revision->update(['payload' => $normalized, 'content_hash' => $hash, ...$media]);
+            $revision->update(['payload' => $normalized, 'schema_version' => RecipeRevisionSnapshotter::SCHEMA_VERSION, 'content_hash' => $hash, ...$media]);
             $this->audit($revision, $actor->getKey(), 'edited', RecipeRevisionStatus::Draft, RecipeRevisionStatus::Draft, null);
 
             return $revision;
@@ -148,7 +259,11 @@ class RecipeRevisionService
             $this->assertStatus($revision, RecipeRevisionStatus::Draft);
 
             $this->audit($revision, $actor->getKey(), 'discarded', RecipeRevisionStatus::Draft, null, null);
+            $media = Media::query()->whereIn('id', $revision->media()->pluck('media_id'))->get();
             $revision->delete();
+            foreach ($media as $asset) {
+                app(DeleteMediaIfUnused::class)->handle($asset);
+            }
         });
     }
 
@@ -175,10 +290,12 @@ class RecipeRevisionService
                 throw ValidationException::withMessages(['revision' => 'There are no changes to submit.']);
             }
 
-            $this->validator->assertSubmittable($payload, $revision->recipe_id);
+            $this->validator->assertSubmittable($payload, $revision->recipe_id, $actor, true);
+            $this->indexDependencies($revision, $payload);
 
             $revision->update([
                 'payload' => $payload,
+                'schema_version' => RecipeRevisionSnapshotter::SCHEMA_VERSION,
                 ...$this->mediaColumns($payload, $revision->media_snapshot),
                 'content_hash' => $this->snapshotter->hash($payload),
                 'status' => RecipeRevisionStatus::InReview->value,
@@ -190,7 +307,7 @@ class RecipeRevisionService
             $this->audit($revision, $actor->getKey(), 'submitted', RecipeRevisionStatus::Draft, RecipeRevisionStatus::InReview, null);
 
             return $revision;
-        });
+        }, 5);
     }
 
     /**
@@ -216,7 +333,7 @@ class RecipeRevisionService
                 $this->assertLive($revision->recipe);
                 $this->assertBasedOnCurrent($revision, $recipeRow);
             }
-            $this->validator->assertSubmittable($this->snapshotter->normalize($revision->payload), $revision->recipe_id);
+            $this->validator->assertSubmittable($this->snapshotter->normalize($revision->payload), $revision->recipe_id, $reviewer, true);
 
             return $this->publishPayload(
                 $revision->recipe_id,
@@ -237,7 +354,7 @@ class RecipeRevisionService
                 },
                 RecipeRevisionStatus::InReview,
             );
-        });
+        }, 5);
     }
 
     public function reject(User $reviewer, RecipeRevision $revision, string $reason): RecipeRevision
@@ -304,14 +421,14 @@ class RecipeRevisionService
             }
 
             $payload = $this->snapshotter->normalize($this->snapshotter->rebaseIds($target->payload, $target->recipe_id));
-            $this->validator->assertSubmittable($payload, $target->recipe_id);
+            $this->validator->assertSubmittable($payload, $target->recipe_id, $actor, true);
 
             return $this->publishPayload(
                 $target->recipe_id,
                 $actor,
                 'rolled_back',
                 $reason,
-                fn (): RecipeRevision => RecipeRevision::query()->create([
+                fn (): RecipeRevision => $this->createPublished([
                     'recipe_id' => $target->recipe_id,
                     'revision_number' => $this->nextNumber($target->recipe_id),
                     'status' => RecipeRevisionStatus::Published->value,
@@ -331,7 +448,7 @@ class RecipeRevisionService
                 null,
                 ['restored_from_revision_id' => $target->getKey()],
             );
-        });
+        }, 5);
     }
 
     /**
@@ -354,14 +471,14 @@ class RecipeRevisionService
             $revision = $prepare();
             $this->guard->markRevision($revision->getKey());
 
-            $payload = $this->snapshotter->normalize($revision->payload);
+            $payload = $revision->payload;
 
             if ($this->snapshotter->hash($payload) !== $revision->content_hash) {
                 throw new RuntimeException("Revision {$revision->getKey()} payload no longer matches its approved hash.");
             }
 
-            $resolved = $this->applier->apply($recipeId, $payload, $revision->getKey());
-            $liveHash = $this->snapshotter->hash($this->snapshotter->serialize($recipeId));
+            $resolved = $this->applier->apply($recipeId, $this->snapshotter->forSchema($this->snapshotter->normalize($payload), $revision->schema_version), $revision->getKey());
+            $liveHash = $this->snapshotter->hash($this->snapshotter->forSchema($this->snapshotter->serialize($recipeId, $revision->payload['units'] ?? []), $revision->schema_version));
 
             if ($liveHash !== $revision->content_hash) {
                 throw new RuntimeException("Published content for revision {$revision->getKey()} does not match the approved content hash; publication rolled back.");
@@ -495,6 +612,7 @@ class RecipeRevisionService
             $recipe = DB::table('recipes')->where('id', $recipeId)->lockForUpdate()->first(['id', 'published_at', 'current_revision_id']);
 
             $payload = $this->snapshotter->serialize($recipeId);
+            app(RecipeComponentResolver::class)->assertValidPayload($payload, $recipeId, $actorId !== null ? User::find($actorId) : null, true);
             $hash = $this->snapshotter->hash($payload);
 
             $current = RecipeRevision::query()->where('recipe_id', $recipeId)->where('status', RecipeRevisionStatus::Published->value)->first();
@@ -512,7 +630,7 @@ class RecipeRevisionService
                 $this->audit($current, $actorId, 'superseded', RecipeRevisionStatus::Published, RecipeRevisionStatus::Superseded, 'Replaced by newly published live content.');
             }
 
-            $revision = RecipeRevision::query()->create([
+            $revision = $this->createPublished([
                 'recipe_id' => $recipeId,
                 'revision_number' => (int) RecipeRevision::query()->where('recipe_id', $recipeId)->max('revision_number') + 1,
                 'status' => RecipeRevisionStatus::Published->value,
@@ -533,7 +651,7 @@ class RecipeRevisionService
             $this->audit($revision, $actorId, $action, null, RecipeRevisionStatus::Published, null);
 
             return $revision;
-        });
+        }, 5);
     }
 
     /**

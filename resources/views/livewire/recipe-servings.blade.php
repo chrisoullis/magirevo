@@ -1,6 +1,7 @@
-<aside class="ingredients-panel" id="ingredients" data-ingredients-panel data-recipe-id="{{ $recipeId }}" data-servings="{{ $current }}">
+<aside class="ingredients-panel" id="ingredients" data-ingredients-panel data-recipe-id="{{ $recipeId }}" data-state-version="{{ $stateVersion }}" data-servings="{{ $current }}">
     <span class="eyebrow"><span class="eyebrow-dot"></span> {{ __('site.need_eyebrow') }}</span>
     <h2>{{ __('site.ingredients') }}</h2>
+    <p class="ingredient-checklist-hint">{{ __('recipe_detail.checklist_hint') }}</p>
     <div class="servings-control" role="group" aria-label="{{ __('site.servings') }}">
         <button type="button" wire:click="decrease" @disabled($current <= $min) aria-label="{{ __('site.decrease_servings') }}">&minus;</button>
         <span class="servings-note" aria-live="polite">{{ __('site.for_servings', ['count' => $current]) }}</span>
@@ -22,9 +23,15 @@
         @if ($group['name'])<h3>{{ $group['name'] }}</h3>@endif
         <ul class="ingredient-list" data-ingredient-list>
             @foreach ($group['items'] as $itemIndex => $item)
+                @if ($item['line_type'] === 'recipe')
+                    <li wire:key="component-{{ $item['line_uuid'] }}" data-component-row>
+                        @include('recipes.partials.components', ['components' => $item['components'], 'cooking' => false])
+                    </li>
+                    @continue
+                @endif
                 @php($ingredientKey = $groupIndex.'-'.$itemIndex)
                 <li wire:key="ingredient-{{ $ingredientKey }}">
-                    <input type="checkbox" id="ingredient-{{ $recipeId }}-{{ $ingredientKey }}" data-ingredient-key="{{ $ingredientKey }}" aria-label="{{ $item['name'] }}">
+                    <input type="checkbox" id="ingredient-{{ $recipeId }}-{{ $ingredientKey }}" data-ingredient-key="{{ $ingredientKey }}" data-recipe-ingredient-id="{{ $item['recipe_ingredient_id'] ?? '' }}" aria-label="{{ $item['name'] }}">
                     <div class="ingredient-line-copy">
                         <label class="sr-only" for="ingredient-{{ $recipeId }}-{{ $ingredientKey }}">{{ $item['name'] }}</label>
                         <span class="ingredient-text">

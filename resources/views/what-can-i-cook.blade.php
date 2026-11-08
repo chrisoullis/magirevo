@@ -14,6 +14,7 @@
 @section('canonical', route('recipes.what-can-i-cook', ['locale' => $locale]))
 
 @section('content')
+    <x-site.kitchen-shortcuts />
     <section class="what-cook-page">
         <header class="what-cook-page-heading">
             <span class="eyebrow"><span class="eyebrow-dot"></span> {{ __('site.cooking_page_eyebrow') }}</span>

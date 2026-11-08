@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Log in | The Sunday Table')
+@section('title', 'Log in | My Kitchen')
 @section('meta_description', 'Log in to your Sunday Table recipe box.')
 
 @section('content')

@@ -29,7 +29,7 @@ class RecipeAndAccountTest extends TestCase
     {
         $response = $this->get(route('home.localized', ['locale' => 'en']))
             ->assertOk()
-            ->assertSee('Good food.')
+            ->assertSee('What would you like to cook today?')
             ->assertSee('Crispy chickpeas');
 
         $response->assertSee('href="/login"', false);

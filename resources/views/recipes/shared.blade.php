@@ -1,9 +1,10 @@
 @extends('layouts.app')
 
-@section('title', __('sharing.page.title').' | The Sunday Table')
+@section('title', __('sharing.page.title').' | My Kitchen')
 @section('robots', 'noindex, nofollow')
 
 @section('content')
+    <x-site.kitchen-shortcuts />
     <section class="saved-page">
         <div class="saved-heading">
             <span class="eyebrow"><span class="eyebrow-dot"></span> {{ __('sharing.page.eyebrow') }}</span>
@@ -29,7 +30,7 @@
                             <h2><a href="{{ route('recipes.show', ['locale' => $translation->locale, 'slug' => $translation->slug], false) }}">{{ $translation->title }}</a></h2>
                             <p>{{ $translation->summary }}</p>
                             @if ($sharers->has($recipe->pivot->shared_by))
-                                <p>{{ __('sharing.page.by', ['name' => $sharers[$recipe->pivot->shared_by]]) }}</p>
+                                <p class="shared-attribution">{{ __('sharing.page.by', ['name' => $sharers[$recipe->pivot->shared_by]]) }}</p>
                             @endif
                         </div>
                     </article>

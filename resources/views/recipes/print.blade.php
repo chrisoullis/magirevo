@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow, noarchive">
-    <title>{{ $recipe->title }} | The Sunday Table</title>
+    <title>{{ $recipe->title }} | My Kitchen</title>
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @endif
@@ -33,6 +33,10 @@
                 @if ($group['name'])<h3>{{ $group['name'] }}</h3>@endif
                 <ul>
                     @foreach ($group['items'] as $item)
+                        @if ($item['line_type'] === 'recipe')
+                            <li>@include('recipes.partials.components', ['components' => $item['components'], 'cooking' => false, 'printing' => true])</li>
+                            @continue
+                        @endif
                         <li>
                             @if ($item['quantity'])<strong>{{ $item['quantity'] }}</strong>@endif
                             {{ $item['name'] }}@if ($item['note']), {{ $item['note'] }}@endif
@@ -44,11 +48,20 @@
         </section>
         <section class="print-steps" aria-labelledby="print-steps-title">
             <h2 id="print-steps-title">{{ __('site.print_instructions') }}</h2>
-            <ol>
-                @foreach ($steps as $step)
-                    <li>{{ $step['text'] }}@if ($step['minutes']) <em>({{ __('site.step_minutes', ['minutes' => $step['minutes']]) }})</em>@endif</li>
-                @endforeach
-            </ol>
+            @php
+                $stepSections ??= [['title' => null, 'description' => null, 'steps' => $steps]];
+            @endphp
+            @foreach ($stepSections as $section)
+                @if ($section['title'])
+                    <h3>{{ $section['title'] }}</h3>
+                    @if ($section['description'])<p>{{ $section['description'] }}</p>@endif
+                @endif
+                <ol>
+                    @foreach ($section['steps'] as $step)
+                        <li value="{{ $step['number'] }}">{{ $step['text'] }}@if ($step['minutes']) <em>({{ __('site.step_minutes', ['minutes' => $step['minutes']]) }})</em>@endif</li>
+                    @endforeach
+                </ol>
+            @endforeach
         </section>
         <footer class="print-footer">
             <p>{{ __('site.print_source') }}@if ($cover?->credit) &middot; {{ __('site.print_photo_credit', ['credit' => $cover->credit]) }}@endif</p>

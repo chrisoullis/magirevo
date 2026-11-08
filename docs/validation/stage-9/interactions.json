@@ -1,0 +1,19 @@
+{
+  "checks": [
+    "en: keyboard search suggestions",
+    "en: ingredient checklist survives reload",
+    "en: Livewire servings increase",
+    "en: cooking dialog focus, next and Escape",
+    "en: no homepage overflow at 320",
+    "en: no homepage overflow at 768",
+    "en: mobile navigation opens and closes with Escape",
+    "el: keyboard search suggestions",
+    "el: ingredient checklist survives reload",
+    "el: Livewire servings increase",
+    "el: cooking dialog focus, next and Escape",
+    "el: no homepage overflow at 320",
+    "el: no homepage overflow at 768",
+    "el: mobile navigation opens and closes with Escape"
+  ],
+  "errors": []
+}

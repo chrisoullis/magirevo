@@ -30,6 +30,6 @@ return [
         'rejected_subject' => 'Η αίτησή σου για συνεργάτης',
         'rejected_line' => 'Ευχαριστούμε για την αίτηση. Αυτή τη φορά δεν μπορέσαμε να την εγκρίνουμε.',
         'rejected_reason' => 'Αιτία: :reason',
-        'open_action' => 'Άνοιγμα The Sunday Table',
+        'open_action' => 'Άνοιγμα My Kitchen',
     ],
 ];

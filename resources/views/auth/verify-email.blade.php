@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Verify your email | The Sunday Table')
+@section('title', 'Verify your email | My Kitchen')
 @section('meta_description', 'Verify your email address to start saving recipes in your Sunday Table recipe box.')
 
 @section('content')

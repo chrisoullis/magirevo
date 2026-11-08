@@ -1,4 +1,4 @@
-<div class="flex flex-col gap-8" wire:poll.30s>
+<div class="kitchen-module household-module flex flex-col gap-8" wire:poll.30s>
     <header class="flex flex-col gap-2">
         <a class="text-link inline-flex min-h-11 items-center" href="{{ route('households.index', ['locale' => $locale], false) }}">&larr; {{ __('households.back') }}</a>
         <h1 class="text-3xl leading-tight break-words">{{ $household->name }}</h1>
